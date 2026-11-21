@@ -181,12 +181,20 @@ def main():
         # absolute run against an empty reference (macmini): live's count is the limit; unreasoned rows stop
         run(cfg, ["$PY", "-I", "work/p2net/wall_near_lane.py", RC, "work/p2net/empty_ref"], "d_walls_abs.log")
         a = jload(f"work/p2net/wall_near_lane_{r}_nocbe_abs.json")
-        lim = cfg.get("walls_abs_max_triangles", 620)
-        ok = w["on_road_m"] == 0 and a["on_road_triangles"] <= lim and a.get("on_road_unreasoned_triangles", 0) == 0
-        return respond(req, output={"pass": str(ok).lower(),
-                                    "detail": f"new on-road walls {w['on_road_m']} m (must be 0); absolute on-road "
-                                              f"{a['on_road_triangles']} triangles (max {lim}); unreasoned "
-                                              f"{a.get('on_road_unreasoned_triangles', 'n/a')}"})
+        wa = cfg.get("walls_abs") or {}
+        if wa.get("metric") == "m":   # lead's decision (A), r14v on: absolute gate on metres vs live; triangles reported
+            lim = wa["max_m"]
+            ok = w["on_road_m"] == 0 and a["on_road_m"] <= lim and (
+                not wa.get("unreasoned_gate", False) or a.get("on_road_unreasoned_triangles", 0) == 0)
+            det = (f"new on-road walls {w['on_road_m']} m (must be 0); absolute on-road {a['on_road_m']} m (max {lim}, "
+                   f"live's); {a['on_road_triangles']} triangles, unreasoned {a.get('on_road_unreasoned_triangles', 'n/a')} "
+                   f"(reported)")
+        else:
+            lim = cfg.get("walls_abs_max_triangles", 620)
+            ok = w["on_road_m"] == 0 and a["on_road_triangles"] <= lim and a.get("on_road_unreasoned_triangles", 0) == 0
+            det = (f"new on-road walls {w['on_road_m']} m (must be 0); absolute on-road {a['on_road_triangles']} triangles "
+                   f"(max {lim}); unreasoned {a.get('on_road_unreasoned_triangles', 'n/a')}")
+        return respond(req, output={"pass": str(ok).lower(), "detail": det})
     if tid == "d_columns":
         # macmini (21 Nov): stopping. No post on another way's pavement, none across a barrier (r14t: 0 and 0).
         run(cfg, ["$PY", "-I", "work/p2net/column_rules_check.py", RC], "d_columns.log")
