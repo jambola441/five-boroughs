@@ -3,7 +3,7 @@
  "prev": "r14t",
  "kind": "highway_round",
  "mode": "plan_only",
- "note": "Plan-only check: the guard runs (read-only); every other step stops before executing.",
+ "note": "Plan-only check: the guard runs (read-only); every other step stops before executing. prev r14t frozen (macmini, 2026-11-21); 21 passes as make_r14t.sh (underlay_clip after edge_seal).",
  "p2_terv": "v1c_r6k",
  "input_build": "work/p2net/b_fdr_r14q",
  "post_only": true,
@@ -38,6 +38,7 @@
   "cover_walls",
   "crack_fill",
   "edge_seal",
+  "underlay_clip",
   "column_cleanup",
   "below_to_above"
  ],
