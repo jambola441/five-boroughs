@@ -329,10 +329,23 @@ def t_kept_lidar2(cfg, s, d):
     return {"out": p, "kept": len(j["rows"]), "counts": json.dumps(j["counts"])}
 
 
+def t_kept_lidar_dual(cfg, s, d):
+    """the kept-claim LiDAR guard over two LiDAR class sets in one run (pe:reach/lidar_kept_dual.py); the gate judges
+    set '1,2,17' (the lead's class-1 rule) and reports '17,2' beside it."""
+    out = os.path.join(OUT, s["id"] + ".json")
+    p = existing_or_run(cfg, s, out, lambda: run_job(
+        s["id"], [py(), "-I", project("pe:reach/lidar_kept_dual.py"), ref(cfg, d, s["list"]), ref(cfg, d, s["drape"]),
+                  out, project(s["base_drape"])], project("pe:"), s["id"] + ".log", env={"TERV": s["TERV"]}))
+    j = json.load(open(p))
+    judged = j["sets"]["1,2,17"]
+    return {"out": p, "kept": len(judged["rows"]), "counts": json.dumps(judged["counts"])}
+
+
 TOOLS = {"drape": t_drape, "lift_gate": t_lift_gate, "newlist": t_newlist, "deck_under": t_deck_under,
          "ramps": t_ramps, "trace": t_trace, "lidar": t_lidar, "census": t_census,
          "census_rs": lambda cfg, s, d: t_census(cfg, {**s, "rs_events": True}, d), "kept_lidar": t_kept_lidar, "tent_diff": t_tent_diff,
-         "modelled_census": t_modelled_census, "census_fp": t_census_fp, "fp_new": t_fp_new, "kept_lidar2": t_kept_lidar2}
+         "modelled_census": t_modelled_census, "census_fp": t_census_fp, "fp_new": t_fp_new, "kept_lidar2": t_kept_lidar2,
+         "kept_lidar_dual": t_kept_lidar_dual}
 
 
 # ---------- gates (computed in code; budgets from the round file, default 0 = must not rise) ----------
@@ -412,7 +425,9 @@ def gate(cfg, g, d):
                     f"excluded only through a lane-hugging neighbour, of them by R2 lines {off['inherited_by_r2']}; "
                     f"polygons newly riding with the switch on: {rides}"), {}
     if k == "kept_lidar":   # every kept claim the rule raised: on LiDAR (PASS), or a FAIL with a reason on file
-        rows = json.load(open(d[g["step"]]["out"]))["rows"]
+        jk = json.load(open(d[g["step"]]["out"]))
+        dual = "sets" in jk   # a kept_lidar_dual step: judge the '1,2,17' set (the lead's class-1 rule)
+        rows = jk["sets"][g.get("set", "1,2,17")]["rows"] if dual else jk["rows"]
         rs = json.load(open(project(cfg["kept_reasons"]))) if cfg.get("kept_reasons") and os.path.exists(project(cfg["kept_reasons"])) else []
         at = lambda r: {"x": r["c"][0], "z": r["c"][1]}
         fails = [r for r in rows if r.get("cls") == "FAIL"]
@@ -455,7 +470,9 @@ def gate(cfg, g, d):
                 f"{sum(1 for r in rows if r.get('small'))} ({small_pass} PASS, "
                 f"{sum(1 for r in rows if r.get('small') and r.get('cls') == 'FAIL')} FAIL); sliver points (raised "
                 f"alone, not counted as evidence): {sum(int(r.get('sliver') or 0) for r in rows)} on "
-                f"{sum(1 for r in rows if r.get('sliver'))} claims"), \
+                f"{sum(1 for r in rows if r.get('sliver'))} claims"
+                + (f"; set 17,2 for comparison: {jk.get('counts_17_2')}; PASS on class-1 LiDAR only: "
+                   f"{jk.get('pass_c1_only')}" if dual else "")), \
             {"unbudgeted": ([f"FAIL at {r['c'][0]:.0f},{r['c'][1]:.0f}: {r.get('match')}/{r.get('n')} raised points on "
                              f"LiDAR" for r in bad]
                             + [(f"sliver spike {h - hb:.1f} m" if hb is not None else "sliver where the base draws nothing")

@@ -158,6 +158,7 @@ PAGE_OUT = {"drape": ["out", "tiles_written", "tiles_total"],
                                 "inherited_by_r2"],
             "census_fp": ["out", "tents_n", "tents_m2", "overflow_polys"],
             "fp_new": ["out", "rows"], "kept_lidar2": ["out", "kept", "counts"],
+            "kept_lidar_dual": ["out", "kept", "counts"],
             "census_rs": ["out", "tents_n", "tents_m2", "overflow_polys", "rs_whole_losses", "rs_keep_test"]}
 
 
