@@ -106,7 +106,7 @@
     "p_drape"
    ],
    "TERV": "v1c_r6s2",
-   "existing": "work/page_editor/data/census/cbe6/deck_under_v1c_r6s2_r14s_lr3_rl1od.json"
+   "existing": "pe:data/census/cbe6/deck_under_v1c_r6s2_r14s_lr3_rl1od.json"
   },
   {
    "id": "p_ramps",
@@ -175,7 +175,7 @@
   }
  ],
  "frames": {
-  "folder": "work/page_editor/frames/graph/page_wiring_test",
+  "folder": "pe:frames/graph/page_wiring_test",
   "after": [
    "p_newlist"
   ],

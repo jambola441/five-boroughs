@@ -35,7 +35,12 @@ def validate(req, passed):
 
 
 def project(rel):
-    """A project path relative to NYC_ROOT, or 'runs:<path>' relative to PIPELINE_RUNS (earlier runs' outputs)."""
+    """A project path relative to NYC_ROOT; 'runs:<path>' relative to PIPELINE_RUNS (earlier runs' outputs);
+    'pe:<path>' relative to PE_ROOT (the page editor's folder)."""
+    if rel.startswith("pe:"):   # the page editor's folder: given only by PE_ROOT, never named in this repo
+        if not os.environ.get("PE_ROOT"):
+            raise RuntimeError("PE_ROOT is not set")
+        return os.path.join(os.environ["PE_ROOT"], rel[len("pe:"):])
     if rel.startswith("runs:"):
         return os.path.join(os.environ.get("PIPELINE_RUNS", os.path.dirname(OUT)), rel[len("runs:"):])
     if not ROOT:

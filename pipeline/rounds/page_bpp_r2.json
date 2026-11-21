@@ -162,7 +162,7 @@
   }
  ],
  "frames": {
-  "folder": "work/page_editor/frames/graph/page_bpp_r2",
+  "folder": "pe:frames/graph/page_bpp_r2",
   "after": [
    "p_newlist"
   ],

@@ -23,7 +23,7 @@
   {
    "id": "p_trace_city_r6r",
    "tool": "trace",
-   "list": "work/page_editor/data/census/cbe6/city_new_rl_vs_off.json",
+   "list": "pe:data/census/cbe6/city_new_rl_vs_off.json",
    "TERV": "v1c_r6r",
    "LIFTRULE": 3,
    "RESLOCAL": 1,
@@ -33,8 +33,8 @@
    "id": "p_lidar_city_r6r",
    "tool": "lidar",
    "use_existing": true,
-   "existing": "work/page_editor/data/census/cbe6/lidar_check_rl1.json",
-   "list": "work/page_editor/data/census/cbe6/city_new_rl_vs_off.json",
+   "existing": "pe:data/census/cbe6/lidar_check_rl1.json",
+   "list": "pe:data/census/cbe6/city_new_rl_vs_off.json",
    "drape": "work/drive_audit/page_drape/v1c_r6r_r14s_lr3_rl"
   },
   {
@@ -58,7 +58,7 @@
  ],
  "gates": [],
  "frames": {
-  "folder": "work/page_editor/frames/graph/page_trace_rl1",
+  "folder": "pe:frames/graph/page_trace_rl1",
   "after": [
    "p_trace_67",
    "p_trace_city_r6r"

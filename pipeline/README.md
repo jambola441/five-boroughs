@@ -46,15 +46,16 @@ WAITING=1 NYC_ROOT=... tools/drive_run.sh <run>/run  # also retries steps awaiti
 
 ## Page rounds (kind `page_round`)
 
-These wrap the page editor's tools, unchanged, from work/page_editor/ROUND_GRAPH_SPEC_PAGE_EDITOR.md:
+These wrap the page editor's tools, unchanged, as its round-graph spec (kept local) lists them:
 drape, lift_gate, newlist, deck_under, ramps, trace, lidar and census.
 - Steps are listed in the round file.
 - Gates are computed in code against the round's declared budget; 0 means "must not rise".
 - Frames are a hand-off. `frames_ready` writes `frames_request.json` (poses, variants and, for trace rounds,
   sites per class) and waits until the page-editor session has rendered into the named folder and dropped an empty
   `READY` file. Hydrogen then reviews each image in a copy-only folder, with commands denied.
-- Page code (page_editor/src, phaseb, the set patch lists) is called by local path only. It is never copied,
-  committed or passed to agy.
+- The page editor's folder is reached only through `PE_ROOT` (`pe:` paths in round files). Its code is called by
+  local path only. It is never copied, committed or passed to agy. The commit scanner is an allowlist (pipeline
+  code, prompts, round files, docs) plus the sha256 of every file in the page editor's code trees.
 - Rounds:
   - `page_trace_rl1.json`: round 1, the trace;
   - `page_bpp_r2.json`: round 2, B″ citywide, with a DRAFT budget for the lead to set;

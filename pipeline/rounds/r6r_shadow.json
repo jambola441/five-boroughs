@@ -9,7 +9,7 @@
   "crest_census": "work/terrain_study/p2/checks/v1c_r6r_crest_census.json",
   "exact_report": "work/drive_audit/deckends/EXACT_R6R.md",
   "gate_c_split": "work/drive_audit/deckends/gate_c_split/split_r6r.json",
-  "deck_gap_census": "work/page_editor/data/census/cbe6/deck_under_r6r_off.json",
+  "deck_gap_census": "pe:data/census/cbe6/deck_under_r6r_off.json",
   "frame_pairs": {
     "e5_drv": ["work/terrain_study/p2/out/renders/v1c_r6r_pairs/pair_e5_drv.jpg", null],
     "e5_ramp": ["work/terrain_study/p2/out/renders/v1c_r6r_pairs/pair_e5_ramp.jpg", null],

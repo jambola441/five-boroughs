@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Page-editor round nodes: wraps the page editor's EXISTING tools unchanged (spec:
-work/page_editor/ROUND_GRAPH_SPEC_PAGE_EDITOR.md, steps 1-8), as detached jobs.
+"""Page-editor round nodes: wraps the page editor's EXISTING tools unchanged (its round-graph spec, kept local;
+steps 1-8), as detached jobs. Its folder is reached only through PE_ROOT ('pe:' paths).
 
 Hard rules (the page editor's):
-- No step builds, serves, reads, copies or passes on the decrypted page (page_editor/src) or any built page.
-  The tools are called by local path only; nothing from page_editor/phaseb is copied anywhere.
+- No step builds, serves, reads, copies or passes on the decrypted page or any built page.
+  The tools are called by local path only; none of the page editor's code is copied anywhere.
 - agy (Hydrogen) sees only the game frames the page editor rendered, copied into a folder of their own.
 - Each step checks free disk first and pauses below 10 GB; it writes only to its own new output folder.
 
@@ -25,7 +25,7 @@ from common import (coordinator_json, deps, load_request, project, respond, roun
                     validate, OUT)
 
 W = "work"
-PE, DA = f"{W}/page_editor", f"{W}/drive_audit"
+PE, DA = "pe:", f"{W}/drive_audit"
 NODE = "/opt/homebrew/bin/node"
 MIN_FREE_GB = 10
 IMG = (".jpg", ".jpeg", ".png")
@@ -94,8 +94,8 @@ def t_drape(cfg, s, d):
     """1. overlay drape of a variant, then symlink every base tile it did not write."""
     out = project(f"{DA}/page_drape/{s['tag']}")
     base = project(f"{DA}/page_drape/{s['base']}")
-    script = ("env ONLYDIFF=\"$BASE\" \"$NODE\" --import ../page_editor/phaseb/fb_env_preload.mjs "
-              "../page_editor/phaseb/da_page_drape_wc.mjs page_drape/$TAG page_drape/tiles.json && "
+    script = ("env ONLYDIFF=\"$BASE\" \"$NODE\" --import \"$PE_ROOT/phaseb/fb_env_preload.mjs\" "
+              "\"$PE_ROOT/phaseb/da_page_drape_wc.mjs\" page_drape/$TAG page_drape/tiles.json && "
               "for f in \"$BASE\"/*.drape.json; do n=$(basename \"$f\"); [ -e page_drape/$TAG/$n ] || "
               "ln -s \"$f\" page_drape/$TAG/$n; done")
     p = existing_or_run(cfg, s, out, lambda: run_job(s["id"], ["/bin/sh", "-c", script], project(DA), s["id"] + ".log",
@@ -140,8 +140,8 @@ def t_newlist(cfg, s, d):
     var = d[s["variant_flags"][5:]]["flags"] if s["variant_flags"].startswith("step:") else project(s["variant_flags"])
     out = os.path.join(OUT, s["id"] + ".json")
     p = existing_or_run(cfg, s, out, lambda: run_job(
-        s["id"], [NODE, "--max-old-space-size=12000", project(f"{PE}/phaseb/city_new_list.mjs"), base, var, out],
-        project(PE), s["id"] + ".log"))
+        s["id"], [NODE, "--max-old-space-size=12000", project(f"pe:phaseb/city_new_list.mjs"), base, var, out],
+        project("pe:"), s["id"] + ".log"))
     j = json.load(open(p))
     return {"out": p, "new_places": j["newInY"]["places"], "new_step2": j["newInY"]["step2"],
             "new_lost": j["newInY"]["lost"], "gone_places": j["goneInY"]["places"], "gone_step2": j["goneInY"]["step2"],
@@ -153,8 +153,8 @@ def t_deck_under(cfg, s, d):
     drape = ref(cfg, d, s["drape"])
     out = os.path.join(OUT, s["id"] + ".json")
     p = existing_or_run(cfg, s, out, lambda: run_job(
-        s["id"], [NODE, "--max-old-space-size=8192", project(f"{PE}/phaseb/deck_under.mjs"), drape, out],
-        project(PE), s["id"] + ".log", env=node_env(s)))
+        s["id"], [NODE, "--max-old-space-size=8192", project(f"pe:phaseb/deck_under.mjs"), drape, out],
+        project("pe:"), s["id"] + ".log", env=node_env(s)))
     j = json.load(open(p))
     o = {"out": p, **{k: j["total"][k] for k in ("underM", "noneM", "linesUnder")}, "zero_piece_underM": "none"}
     z = cfg.get("deck_zero_piece")   # the #6 piece: must show 0 m under
@@ -170,7 +170,7 @@ def t_ramps(cfg, s, d):
     """5. ramp census (run_ramp_score.sh), RAMPGATE vs the drive test's FLATTENED_r6r_r14s.json."""
     out = project(f"{DA}/deckends/ramps_{s['tag']}")
     p = existing_or_run(cfg, s, out, lambda: run_job(
-        s["id"], [project(f"{PE}/phaseb/run_ramp_score.sh"), s["tag"]], project(DA), s["id"] + ".log",
+        s["id"], [project(f"pe:phaseb/run_ramp_score.sh"), s["tag"]], project(DA), s["id"] + ".log",
         env={"RAMP_TERV": s["TERV"]}))
     t = open(os.path.join(p, "gate.log")).read()
     m = re.search(r"RAMPGATE \S+: flattened (\d+) \(previous (\d+)\); new (\d+), gone (\d+) -> (\w+)", t)
@@ -186,7 +186,7 @@ def t_trace(cfg, s, d):
     lst = ref(cfg, d, s["list"])
     out = os.path.join(OUT, s["id"] + ".json")
     p = existing_or_run(cfg, s, out, lambda: run_job(
-        s["id"], [NODE, project(f"{PE}/phaseb/trace_sites.mjs"), lst, out], project(PE), s["id"] + ".log",
+        s["id"], [NODE, project(f"pe:phaseb/trace_sites.mjs"), lst, out], project("pe:"), s["id"] + ".log",
         env=node_env(s)))
     j = json.load(open(p))
     return {"out": p, "sites": len(j["rows"]), "counts": json.dumps(j["counts"])}
@@ -197,7 +197,7 @@ def t_lidar(cfg, s, d):
     lst, drape = ref(cfg, d, s["list"]), ref(cfg, d, s["drape"])
     out = os.path.join(OUT, s["id"] + ".json")
     p = existing_or_run(cfg, s, out, lambda: run_job(
-        s["id"], [py(), "-I", project(f"{PE}/phaseb/lidar_restore_check.py"), lst, drape, out], project(PE),
+        s["id"], [py(), "-I", project(f"pe:phaseb/lidar_restore_check.py"), lst, drape, out], project("pe:"),
         s["id"] + ".log"))
     j = json.load(open(p))
     cls = {}
@@ -213,7 +213,7 @@ def t_census(cfg, s, d):
     """8. plan-polygon census (bridge_own_census.mjs): tents, overflow."""
     out = os.path.join(OUT, s["id"] + ".json")
     p = existing_or_run(cfg, s, out, lambda: run_job(
-        s["id"], [NODE, "phaseb/bridge_own_census.mjs", "frames/bridgeown/bridge_foot.json", out], project(PE),
+        s["id"], [NODE, "phaseb/bridge_own_census.mjs", "frames/bridgeown/bridge_foot.json", out], project("pe:"),
         s["id"] + ".log", env={"ALLTILES": "1", **node_env(s)}))
     j = json.load(open(p))
     return {"out": p, "tents_n": j["tents"]["n"], "tents_m2": j["tents"]["m2"], "overflow_polys": j["overflow"]["polys"]}

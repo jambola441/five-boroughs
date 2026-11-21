@@ -12,7 +12,7 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PY = "/usr/bin/python3"
-ENV = ["PATH", "HOME", "USER", "NYC_ROOT", "PIPELINE_OUT"]  # USER: the Claude CLI needs it to find its sign-in
+ENV = ["PATH", "HOME", "USER", "NYC_ROOT", "PIPELINE_OUT", "PE_ROOT"]  # USER: the Claude CLI needs it to find its sign-in
 
 
 def node(i, provider, requires, after=(), fields=None, validated=False, prompt=None):
@@ -150,7 +150,7 @@ PAGE_OUT = {"drape": ["out", "tiles_written", "tiles_total"],
 
 
 def page_tasks(cfg):
-    """The page editor's tools (ROUND_GRAPH_SPEC_PAGE_EDITOR.md) as steps in the order the round file lists them;
+    """The page editor's tools (its round-graph spec) as steps in the order the round file lists them;
     gates computed in code against the declared budget; frames are a hand-off the page-editor session fills."""
     steps = [s["id"] for s in cfg["steps"]]
     t = [node("p_disk", "page", ["free_gb"])]

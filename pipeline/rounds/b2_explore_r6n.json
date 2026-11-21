@@ -7,7 +7,7 @@
   "candidate_rule": "B″ (liftrule 4)",
   "terrain_manifest": "work/terrain_study/p2/out/manifest_terrain_v1c_r6n_sha256.json",
   "terrain_manifest_sha": "a3ca9c9c04788c25168c0298a9a78eef88155d3b1fded431f79b89927f72bb35",
-  "new_gone_list": "work/page_editor/data/census/city_new_B4_vs_B3_r6n.json",
+  "new_gone_list": "pe:data/census/city_new_B4_vs_B3_r6n.json",
   "totals_source": "page editor notes page_editor_Bpp_vs_Bp_r6n_2026-11-21.md (drive test's exact harness on r6n)",
   "totals": {
     "visible_drivable_ends": [16, 16],

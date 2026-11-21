@@ -28,6 +28,10 @@ def state_of(t):
 
 
 def detail_of(t):
+    return re.sub(r"(?:/[^/\s,]+){2,}", "<path>", _detail(t))[:300]   # scrub any absolute path
+
+
+def _detail(t):
     r = t.get("result") or {}
     if r.get("decision") and r.get("reasons"):
         try:
@@ -39,6 +43,11 @@ def detail_of(t):
         if r.get(k): return str(r[k])[:300]
     if r.get("free_ends"): return f"free ends {r['free_ends']}, crest {r.get('crest_8pct')}/{r.get('crest_12pct')}"
     if r.get("terrain_sha"): return "manifest verified, sha " + r["terrain_sha"][:8]
+    if r.get("classes") or r.get("counts"):
+        return f"{r.get('sites', '?')} sites: {r.get('classes') or r['counts']}"[:300]
+    keep = {k: v for k, v in r.items() if k not in ("out", "flags", "gate_lines", "rows", "request", "items")}
+    if keep and t.get("status") == "verified":   # page steps: their own numbers, no paths
+        return ", ".join(f"{k} {v}" for k, v in keep.items())[:300]
     err = re.sub(r"(?:/[^/\s]+){2,}", "<path>", t.get("error") or "")   # scrub any absolute path
     return err[:300]
 

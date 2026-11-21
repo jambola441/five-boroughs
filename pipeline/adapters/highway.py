@@ -181,7 +181,7 @@ def main():
         cmds += [(["$PY", "-I", "work/p2net/size_by_class.py", "work/hw7/final/all", RC], {})]
         rcs = [run(cfg, a, f"d_listed_{i}.log", e) for i, (a, e) in enumerate(cmds)]
         # page editor's at-grade check: reads its script locally (page code never leaves this machine)
-        rcs.append(run(cfg, ["node", "work/page_editor/phaseb/atgrade_check.mjs", f"highways/{RC}",
+        rcs.append(run(cfg, ["node", project("pe:phaseb/atgrade_check.mjs"), f"highways/{RC}",
                              f"work/terrain_study/p1/terrain/{cfg['p2_terv']}", f"highways/work/p2net/atgrade_{r}.json"],
                        "d_listed_atgrade.log", cwd=os.environ["NYC_ROOT"]))
         return respond(req, output={"pass": "true", "detail": f"{len(cmds)} listed checks, exits {rcs}"})
