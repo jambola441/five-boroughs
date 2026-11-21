@@ -198,6 +198,13 @@ def sync_queue(run_dir):
                       open(os.path.join(run_dir, "approval.json"), "w"))
         elif (k == "approval" and a["choice"] == "reject") or (k == "verdict" and a["choice"] == "fix"):
             open(os.path.join(run_dir, "RETIRED"), "w").write(f"{a['choice']} via the decision queue ({note})\n")
+        elif k == "verdict" and a["choice"] == "reasons" and cfg.get("kind") == "research_swarm":
+            # a swarm check has no reasons file: the owner says the check (or its input) is fixed, so retry it
+            for step in it["step"].split("+"):
+                r = subprocess.run(["irrigator", "retry", "--allow-uncertain", os.path.join(run_dir, "run"), step],
+                                   capture_output=True, text=True, env={**os.environ, "PIPELINE_OUT": run_dir})
+                event(name, "retry", step=step, why="reasons (swarm)", ok=r.returncode == 0,
+                      out=(r.stdout + r.stderr).strip()[-200:])
         elif k == "verdict" and a["choice"] == "debt":
             Dq.raise_item(name, it["step"], "debt", "lead", f"Put {cfg.get('round', name)}'s stop at {it['step']} "
                           f"on the debt list? ({note})", {**it["evidence"], "request": note}, run_dir, priority=1)
