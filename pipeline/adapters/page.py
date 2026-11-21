@@ -66,7 +66,7 @@ def ref(cfg, d, v):
 
 def node_env(s):
     """The switches the spec names, passed through to the node tools exactly as the round file sets them."""
-    env = {k: str(s[k]) for k in ("TERV", "LIFTRULE", "RESLOCAL", "ONDECK", "LANES", "POLYLIFT") if k in s}
+    env = {k: str(s[k]) for k in ("TERV", "LIFTRULE", "RESLOCAL", "ONDECK", "LANES", "POLYLIFT", "RS2KEEP") if k in s}
     if "LANES" in env:
         env["LANES"] = project(env["LANES"])
     return env
@@ -214,17 +214,31 @@ def t_lidar(cfg, s, d):
 
 
 def t_census(cfg, s, d):
-    """8. plan-polygon census (bridge_own_census.mjs): tents, overflow."""
+    """8. plan-polygon census (bridge_own_census.mjs): tents, overflow. With rs_events, the page editor's
+    rs_events.mjs preload also logs every resolve() rule-2 whole loss (RS_OUT jsonl), counted here."""
     out = os.path.join(OUT, s["id"] + ".json")
+    rs = os.path.join(OUT, s["id"] + "_rs.jsonl")
+    pre = ["--import", "phaseb/rs_events.mjs"] if s.get("rs_events") else []
+    env = {"ALLTILES": "1", **node_env(s), **({"CLAIMTRACE": "1", "RS_OUT": rs} if s.get("rs_events") else {})}
     p = existing_or_run(cfg, s, out, lambda: run_job(
-        s["id"], [NODE, "phaseb/bridge_own_census.mjs", "frames/bridgeown/bridge_foot.json", out], project("pe:"),
-        s["id"] + ".log", env={"ALLTILES": "1", **node_env(s)}))
+        s["id"], [NODE] + pre + ["phaseb/bridge_own_census.mjs", "frames/bridgeown/bridge_foot.json", out], project("pe:"),
+        s["id"] + ".log", env=env))
     j = json.load(open(p))
-    return {"out": p, "tents_n": j["tents"]["n"], "tents_m2": j["tents"]["m2"], "overflow_polys": j["overflow"]["polys"]}
+    o = {"out": p, "tents_n": j["tents"]["n"], "tents_m2": j["tents"]["m2"], "overflow_polys": j["overflow"]["polys"]}
+    if s.get("rs_events"):   # tool "census_rs": also counts the rule-2 whole losses
+        o.update({"rs_whole_losses": -1, "rs_keep_test": -1})
+    if s.get("rs_events") and os.path.exists(rs):
+        ev = [json.loads(l) for l in open(rs) if l.strip()]
+        whole = [e for e in ev if e["loser"].get("whole")]
+        test = [e for e in whole if e["loser"]["score"] >= 0.5
+                and set(map(str, e["loser"].get("chain") or [])) & set(map(str, e["winner"].get("chain") or []))]
+        o.update({"rs_whole_losses": len(whole), "rs_keep_test": len(test)})
+    return o
 
 
 TOOLS = {"drape": t_drape, "lift_gate": t_lift_gate, "newlist": t_newlist, "deck_under": t_deck_under,
-         "ramps": t_ramps, "trace": t_trace, "lidar": t_lidar, "census": t_census}
+         "ramps": t_ramps, "trace": t_trace, "lidar": t_lidar, "census": t_census,
+         "census_rs": lambda cfg, s, d: t_census(cfg, {**s, "rs_events": True}, d)}
 
 
 # ---------- gates (computed in code; budgets from the round file, default 0 = must not rise) ----------
@@ -239,7 +253,7 @@ def gate(cfg, g, d):
     if k == "newlist":
         n = d[g["step"]]
         j = json.load(open(n["out"]))
-        new = [i for i in j["newList"] if i.get("c") == "step2" and i.get("mag", 0) >= g.get("min_m", 2)]
+        new = [i for i in j["newList"] if i.get("c") in g.get("classes", ["step2"]) and i.get("mag", 0) >= g.get("min_m", 2)]
         debt = [i for i in new if near(i, cfg.get("debt", []), 30)]
         rest = [i for i in new if i not in debt]
         mx = b.get("marginal_step_max_m", 1e9)
@@ -249,7 +263,8 @@ def gate(cfg, g, d):
         ok = not unb and len(marginal) <= b.get("new_step_places", 0)
         if g.get("targets_gate"):
             ok = ok and len(held) == len(cfg.get("target_fixed", []))
-        return ok, (f"{len(new)} new car steps >= {g.get('min_m', 2)} m: {len(marginal)} small (<= {mx} m; budget "
+        what = "new places" if len(g.get("classes", ["step2"])) > 1 else f"new car steps >= {g.get('min_m', 2)} m"
+        return ok, (f"{len(new)} {what}: {len(marginal)} small (<= {mx} m; budget "
                     f"{b.get('new_step_places', 0)}), {len(debt)} on the debt list, {len(unb)} bigger and not on it; "
                     f"target fixes held {len(held)} of {len(cfg.get('target_fixed', []))}"
                     + ("" if g.get("targets_gate") else " (reported)")), \

@@ -151,7 +151,8 @@ PAGE_OUT = {"drape": ["out", "tiles_written", "tiles_total"],
             "deck_under": ["out", "underM", "noneM", "linesUnder", "zero_piece_underM"],
             "ramps": ["out", "flattened", "previous", "new", "gone", "rampgate", "line"],
             "trace": ["out", "sites", "counts"], "lidar": ["out", "sites", "counts", "classes"],
-            "census": ["out", "tents_n", "tents_m2", "overflow_polys"]}
+            "census": ["out", "tents_n", "tents_m2", "overflow_polys"],
+            "census_rs": ["out", "tents_n", "tents_m2", "overflow_polys", "rs_whole_losses", "rs_keep_test"]}
 
 
 def page_tasks(cfg):

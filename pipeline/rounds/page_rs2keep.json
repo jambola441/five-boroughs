@@ -1,0 +1,187 @@
+{
+ "round": "Page round 3: rule-2 same-deck keep (rs2keep) on B′ + reslocal=1, r6s2 + r14s",
+ "kind": "page_round",
+ "mode": "live",
+ "accept": "explore",
+ "idea": "In resolve() rule 2, the loser keeps its claim (both ride that deck) when its deck line shares at least one segment id with the winner's and the loser's score >= 0.5; after reslocal's local exclusion. Dry count (r6r rs census, reslocal=1): 246 whole rule-2 losses, 107 meet the test (fewer kept in practice: order effects).",
+ "question": "Does keeping same-deck rule-2 losers remove the reslocal=1 rule-2 steps (960 m of 1,357 m citywide in round 1) without new places, deck gap, ramps or tents?",
+ "budget": {
+  "new_step_places": 0,
+  "marginal_step_max_m": 0,
+  "deck_under_m": 0,
+  "ramps_new": 0,
+  "tents_n": 0,
+  "tents_m2": 0
+ },
+ "budget_note": "the lead's rule: no new places vs base, deck gap no rise, ramps 0 new, tents no rise",
+ "deck_zero_piece": {
+  "name": "Cross Bronx Expressway",
+  "x": 8445.6,
+  "z": -7785.4,
+  "radius_m": 15
+ },
+ "debt": [],
+ "target_fixed": [],
+ "steps": [
+  {
+   "id": "p_drape",
+   "tool": "drape",
+   "tag": "v1c_r6s2_r14s_lr3_rl1k",
+   "base": "v1c_r6s2_r14s_lr3_rl1b",
+   "LIFTRULE": 3,
+   "RESLOCAL": 1,
+   "RS2KEEP": 1,
+   "TERV": "v1c_r6s2",
+   "LANES": "highways/work/p2net/final_fdr/r14s"
+  },
+  {
+   "id": "p_lift_gate",
+   "tool": "lift_gate",
+   "tag": "v1c_r6s2_r14s_lr3_rl1k",
+   "drape": "step:p_drape",
+   "after": [
+    "p_drape"
+   ],
+   "TERV": "v1c_r6s2",
+   "LANES": "highways/work/p2net/final_fdr/r14s"
+  },
+  {
+   "id": "p_newlist",
+   "tool": "newlist",
+   "base_flags": "work/drive_audit/deckends/lift_pd_v1c_r6s2_r14s_lr3_rl1/city/flags_drape.json",
+   "variant_flags": "step:p_lift_gate",
+   "after": [
+    "p_lift_gate"
+   ]
+  },
+  {
+   "id": "p_deck_under",
+   "tool": "deck_under",
+   "drape": "step:p_drape",
+   "after": [
+    "p_drape"
+   ],
+   "TERV": "v1c_r6s2"
+  },
+  {
+   "id": "p_deck_base",
+   "tool": "deck_under",
+   "use_existing": true,
+   "existing": "pe:data/census/cbe6/deck_under_v1c_r6s2_r14s_lr3_rl1.json",
+   "TERV": "v1c_r6s2"
+  },
+  {
+   "id": "p_ramps",
+   "tool": "ramps",
+   "tag": "v1c_r6s2_r14s_lr3_rl1k",
+   "TERV": "v1c_r6s2",
+   "after": [
+    "p_drape"
+   ]
+  },
+  {
+   "id": "p_ramps_base",
+   "tool": "ramps",
+   "tag": "v1c_r6s2_r14s_lr3_rl1b",
+   "use_existing": true,
+   "existing": "work/drive_audit/deckends/ramps_v1c_r6s2_r14s_lr3_rl1b",
+   "TERV": "v1c_r6s2"
+  },
+  {
+   "id": "p_lidar",
+   "tool": "lidar",
+   "list": "step:p_newlist",
+   "drape": "step:p_drape",
+   "after": [
+    "p_newlist"
+   ]
+  },
+  {
+   "id": "p_trace",
+   "tool": "trace",
+   "list": "step:p_newlist",
+   "LIFTRULE": 3,
+   "RESLOCAL": 1,
+   "RS2KEEP": 1,
+   "after": [
+    "p_newlist"
+   ],
+   "TERV": "v1c_r6s2",
+   "LANES": "highways/work/p2net/final_fdr/r14s"
+  },
+  {
+   "id": "p_census",
+   "tool": "census_rs",
+   "LIFTRULE": 3,
+   "RESLOCAL": 1,
+   "RS2KEEP": 1,
+   "after": [
+    "p_newlist"
+   ],
+   "TERV": "v1c_r6s2",
+   "LANES": "highways/work/p2net/final_fdr/r14s"
+  },
+  {
+   "id": "p_census_base",
+   "tool": "census_rs",
+   "LIFTRULE": 3,
+   "RESLOCAL": 1,
+   "after": [
+    "p_census"
+   ],
+   "TERV": "v1c_r6s2",
+   "LANES": "highways/work/p2net/final_fdr/r14s"
+  }
+ ],
+ "gates": [
+  {
+   "id": "g_newlist",
+   "check": "newlist",
+   "step": "p_newlist",
+   "classes": [
+    "step2",
+    "lost"
+   ],
+   "min_m": 0
+  },
+  {
+   "id": "g_deck_under",
+   "check": "deck_under",
+   "step": "p_deck_under",
+   "base_step": "p_deck_base"
+  },
+  {
+   "id": "g_ramps",
+   "check": "ramps",
+   "step": "p_ramps",
+   "base_step": "p_ramps_base"
+  },
+  {
+   "id": "g_census",
+   "check": "census",
+   "step": "p_census",
+   "base_step": "p_census_base"
+  }
+ ],
+ "frames": {
+  "folder": "pe:frames/graph/page_rs2keep",
+  "after": [
+   "p_trace"
+  ],
+  "pick_from": [
+   "p_trace"
+  ],
+  "per_class": 2,
+  "panels": [
+   "B′ + reslocal=1",
+   "B′ + reslocal=1 + rs2keep"
+  ],
+  "variants": [
+   "LIFTRULE=3 RESLOCAL=1",
+   "LIFTRULE=3 RESLOCAL=1 RS2KEEP=1"
+  ],
+  "note": "6-8 kept-claim sites, picked by the page editor from the new list and trace"
+ },
+ "expires": "2026-11-28",
+ "max_rounds": 3
+}
