@@ -318,14 +318,18 @@ def gate(cfg, g, d):
         bad = [r for r in fails if not near(at(r), [dict(q, radius_m=5) for q in rs], 5)]
         by = {}
         for r in rows: by[r.get("cls", "?")] = by.get(r.get("cls", "?"), 0) + 1
-        raised = by.get("PASS", 0) + by.get("FAIL", 0) + by.get("D", 0)   # NOLIFT doesn't count
-        d_share = by.get("D", 0) / raised if raised else 0.0
+        # the lead (option c): a PASS on only 1-2 raised points counts as D for the cap; a 1-2-point FAIL stays a FAIL
+        small_pass = sum(1 for r in rows if r.get("small") and r.get("cls") == "PASS")
+        by_cap = dict(by, PASS=by.get("PASS", 0) - small_pass, D=by.get("D", 0) + small_pass)
+        raised = by_cap.get("PASS", 0) + by_cap.get("FAIL", 0) + by_cap.get("D", 0)   # NOLIFT doesn't count
+        d_share = by_cap.get("D", 0) / raised if raised else 0.0
         unsure = d_share > 0.2   # the lead: too much of the rule unverified -> uncertain, blocks
         return (not bad and not unsure), (("UNCERTAIN (blocks): " if unsure else "")
                 + f"{len(rows)} kept claims: {by}; {len(fails)} FAIL, {len(fails) - len(bad)} of them with a reason; "
-                f"D {by.get('D', 0)} of {raised} that raised anything = {d_share:.0%} (cap 20 %); judged on only 1-2 "
-                f"raised points (small): {sum(1 for r in rows if r.get('small'))} "
-                f"({sum(1 for r in rows if r.get('small') and r.get('cls') == 'PASS')} PASS)"), \
+                f"D for the cap {by_cap.get('D', 0)} of {raised} that raised anything = {d_share:.0%} (cap 20 %; "
+                f"includes {small_pass} PASS on only 1-2 points); verdicts on only 1-2 raised points: "
+                f"{sum(1 for r in rows if r.get('small'))} ({small_pass} PASS, "
+                f"{sum(1 for r in rows if r.get('small') and r.get('cls') == 'FAIL')} FAIL)"), \
             {"unbudgeted": [f"FAIL at {r['c'][0]:.0f},{r['c'][1]:.0f}: {r.get('match')}/{r.get('n')} raised points on "
                             f"LiDAR" for r in bad][:30]}
     if k == "census":
