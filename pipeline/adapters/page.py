@@ -410,6 +410,8 @@ def page_accept(req, cfg, d):
     expired = bool(cfg.get("expires")) and datetime.date.today() > datetime.date.fromisoformat(cfg["expires"])
     rules_pass = rules_pass and not expired
     brief = {k: cfg[k] for k in ("idea", "question", "budget", "debt", "target_fixed", "expires") if k in cfg}
+    if (cfg.get("frames") or {}).get("unreadable_note"):
+        brief["frames_note"] = cfg["frames"]["unreadable_note"]
     ev = {k: {kk: vv for kk, vv in v.items() if kk != "out"} for k, v in d.items()}   # no local paths to the model
     prompt = (open(os.path.join(os.path.dirname(__file__), "..", "prompts", f"page_accept_{cfg['accept']}.md")).read()
               + "\n\nRound: " + cfg["round"] + "\n\nThe round as declared up front:\n" + json.dumps(brief, indent=1)
