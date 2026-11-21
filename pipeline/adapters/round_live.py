@@ -56,14 +56,13 @@ def t_build(cfg):
 
 def t_checks(cfg):
     r = cfg["round"]
-    fe = json.load(open(project(f"{TS}/p2/checks/{r}_free_ends.json")))["summary"]
-    key = cfg.get("free_ends_key", "")
-    if key and key in fe:   # lead (21 Nov): the count includes live's lines in the fallback tiles
-        free_ends = fe[key]
-    elif key and not key.startswith("TBD"):
-        raise KeyError(f"free-ends key {key} not in the round's summary")
-    else:
-        free_ends = sum(v.get("ends", 0) for v in fe.values() if isinstance(v, dict))
+    # Lead (21 Nov): free ends include live's lines in the 605 fallback tiles -> the terrain study's separate
+    # _free_ends_fb.json (same format). The old _free_ends.json is never used for the gate.
+    fb = project(f"{TS}/p2/checks/{r}_free_ends_fb.json")
+    if not os.path.exists(fb):
+        raise FileNotFoundError(f"{r}_free_ends_fb.json not written yet")
+    fe = json.load(open(fb))["summary"]
+    free_ends = sum(v.get("ends", 0) for v in fe.values() if isinstance(v, dict))
     cr = json.load(open(project(f"{TS}/p2/checks/{r}_crest_census.json")))["summary"]["by_kind"]
     crest8 = cr["raised"]["ge_8pct_near_end"] + cr["ext"]["ge_8pct_near_end"]
     crest12 = cr["raised"]["ge_12pct_near_end"] + cr["ext"]["ge_12pct_near_end"]
@@ -250,7 +249,10 @@ def main():
         out, err = t_build(cfg)
         return respond(req, output=out) if out else respond(req, "settled", error=err)
     if tid == "t_checks":
-        c = t_checks(cfg)
+        try:
+            c = t_checks(cfg)
+        except FileNotFoundError as e:
+            return respond(req, "not_started", error=str(e))
         fails = t_rules(c, cfg)
         c.update({"pass": str(not fails).lower(), "fails": json.dumps(fails)})
         return respond(req, output=c)

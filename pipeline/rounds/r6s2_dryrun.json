@@ -38,6 +38,5 @@
  "frame_pairs": {},
  "coordinator": "agy:gemini-4-hydrogen-high",
  "note": "Dry run on the frozen round: proves every step and parser; decides nothing.",
- "live_ramps_flattened": null,
- "free_ends_key": "TBD by terrain study (total including live's lines in the 605 fallback tiles)"
+ "live_ramps_flattened": null
 }
