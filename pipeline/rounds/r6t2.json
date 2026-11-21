@@ -62,5 +62,8 @@
   "Bundle verdict expected NOT shippable: lower-than-live 6,225 m (page claim fix not on) and on-road walls 3,877 m vs live 1,675 m (highways r14s)."
  ],
  "note": "Written by the lead 2026-11-21 after r6t (run r6t-1) stopped at terrain checks (junction 3.13 m at 5892,-8546 from R2 Walton Ave line; widened crest 12% 69 vs 68). v1c_r6t kept unfrozen as built.",
- "frames_outside_graph": true
+ "frames_outside_graph": true,
+ "changes": [
+  "2026-11-21: prev_qa deck gap corrected by the lead to r6s2's own deck_under base (was 37010/32872/592, r6r's numbers)"
+ ]
 }
