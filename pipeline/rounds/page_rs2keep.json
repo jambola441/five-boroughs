@@ -146,13 +146,12 @@
    "id": "p_kept_lidar",
    "tool": "kept_lidar",
    "census": "p_census",
-   "base_census": "p_census_base",
    "drape": "step:p_drape",
    "after": [
     "p_census",
-    "p_census_base",
     "p_drape"
-   ]
+   ],
+   "base_drape": "work/drive_audit/page_drape/v1c_r6s2_r14s_lr3_rl1b"
   }
  ],
  "gates": [
@@ -220,5 +219,6 @@
  },
  "expires": "2026-11-28",
  "max_rounds": 3,
- "success_measure": "rule-2 new-step metres in this round's trace (per_class rule2 step_m) vs the 960 m rule-2 base of round 1 (r6r citywide; r6s2 959.9 m)"
+ "success_measure": "rule-2 new-step metres in this round's trace (per_class rule2 step_m) vs the 960 m rule-2 base of round 1 (r6r citywide; r6s2 959.9 m)",
+ "kept_reasons": "pe:data/census/rs2keep_kept_reasons.json"
 }
