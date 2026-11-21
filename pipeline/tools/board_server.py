@@ -43,6 +43,9 @@ LABELS = {
     "p_census": "Polygon census", "p_census_base": "Polygon census (base)", "g_newlist": "Gate: new steps",
     "g_deck_under": "Gate: deck gap", "g_ramps": "Gate: ramps", "g_census": "Gate: tents", "g_lift": "Gate: lift / city",
     "hydrogen_frames": "Frame review (Gemini)", "page_accept": "Page accept (Gemini)",
+    "code_pin": "Pin code (freeze)", "code_verify": "Code unchanged?", "p_kept_lidar": "Kept claims vs LiDAR",
+    "g_kept_lidar": "Gate: kept claims", "p_tent_diff": "Tents citywide", "g_tent_diff": "Gate: new tents",
+    "p_lidar": "LiDAR check", "p_trace": "Trace",
 }
 WAITS = {"frames_ready": "the page editor's frames", "lead_gate": "the lead's approval"}
 
