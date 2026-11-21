@@ -67,13 +67,30 @@ def t_checks(cfg):
     wp = project(f"{TS}/p2/checks/{r}_crest_census_widened.json")
     wd = json.load(open(wp))["summary"]["widened"] if os.path.exists(wp) else {}
     js = json.load(open(project(f"{TS}/p2/checks/{r}_join_steps.json")))["summary"]["steps_gt_0p1"]
-    log = open(project(f"{TS}/p2/work/v1c_r6/{r.replace('v1c_', '')}_round.log")).read()
-    jm = re.search(r"'after': \{[^}]*'over_2': (\d+), 'max': ([\d.]+)", log)
-    diff = {k: int(v) for k, v in re.findall(r"^(tiles|water|skirts|decks) \S+ vs \S+ differing: (\d+)", log, re.M)}
+    # the byte compare vs the previous round: the terrain study's round log, or (graph builds) this run's build log
+    logs = [project(f"{TS}/p2/work/v1c_r6/{r.replace('v1c_', '')}_round.log"), os.path.join(OUT, "terrain_build.log")]
+    log = next((open(p).read() for p in logs if os.path.exists(p)), "")
+    diff, deck_names = {}, []
+    for k, v in re.findall(r"^(tiles|water|skirts|decks) \S+ vs \S+ differing: (.+)$", log, re.M):
+        if v.strip().startswith("["):   # newer scripts list the changed deck files by name
+            deck_names = re.findall(r"'([^']+)'", v)
+            diff[k] = len(deck_names)
+        else:
+            diff[k] = int(v)
+    if deck_names:
+        diff["deck_names"] = deck_names
+    # junctions: the deck checks' own JSON when written (graph rounds), else the round log
+    dc = project(f"{TS}/p2/checks/{r}_deck_checks.json")
+    if os.path.exists(dc):
+        ja = json.load(open(dc))["_junctions"]["after"]
+        jm = (ja["over_2"], ja["max"])
+    else:
+        m = re.search(r"'after': \{[^}]*'over_2': (\d+), 'max': ([\d.]+)", log)
+        jm = (int(m.group(1)), float(m.group(2))) if m else (-1, -1)
     return {"free_ends": free_ends, "crest_8pct": crest8, "crest_12pct": crest12,
             "crest_widened_8": wd.get("ge8_near_end", -1), "crest_widened_12": wd.get("ge12_near_end", -1),
             "join_steps_gt_0p1": js,
-            "junctions_over_2": int(jm.group(1)) if jm else -1, "junctions_max": float(jm.group(2)) if jm else -1,
+            "junctions_over_2": jm[0], "junctions_max": jm[1],
             "differ": json.dumps(diff)}
 
 
@@ -98,6 +115,12 @@ def t_rules(c, cfg):
         if diff.get(k, 0) > cfg.get("planned_diff", {}).get(k, 0): fails.append(f"{k} changed outside the plan")
     if "decks" in diff and diff["decks"] != cfg.get("planned_diff", {}).get("decks", diff["decks"]):
         fails.append(f"deck files changed {diff['decks']} != plan {cfg['planned_diff']['decks']}")
+    plan_tiles = cfg.get("planned_diff", {}).get("deck_tiles")
+    if plan_tiles and diff.get("deck_names"):   # each changed deck file must belong to a planned tile
+        off = [f for f in diff["deck_names"] if os.path.splitext(f)[0] not in {f"tile_{t}" for t in plan_tiles}]
+        if off: fails.append(f"deck files changed outside the planned tiles: {off[:6]}")
+    if int(c["junctions_over_2"]) < 0: fails.append("junction check not found")
+    if not diff: fails.append("no byte compare vs the previous round found")
     return fails
 
 
@@ -284,6 +307,8 @@ def main():
         return respond(req, {"not_started": "not_started", "uncertain": "uncertain"}.get(kind, "settled"), error=err)
     if tid == "frames_ready":
         pairs = cfg.get("frame_pairs") or {}
+        if cfg.get("frames_outside_graph") and not pairs:   # the lead's choice: frames rendered and reviewed apart
+            return respond(req, output={"pairs": "0 (frames outside this graph)"})
         missing = [k for k, (b, a) in pairs.items() if not all(os.path.exists(project(p)) for p in (b, a) if p)]
         if not pairs or missing:
             return respond(req, "not_started", error=f"awaiting frames ({len(pairs)} pairs listed, missing {missing})")

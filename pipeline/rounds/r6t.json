@@ -21,7 +21,13 @@
   "water": 0,
   "skirts": 0,
   "decks": 5,
-  "deck_tiles": ["x10_z-1", "x10_z-2", "x18_z-20", "x11_z-18", "x12_z-18"]
+  "deck_tiles": [
+   "x10_z-1",
+   "x10_z-2",
+   "x18_z-20",
+   "x11_z-18",
+   "x12_z-18"
+  ]
  },
  "prev_qa": {
   "b_underM": 37010,
@@ -30,9 +36,15 @@
   "walls_onroad_m": 3876.9
  },
  "rules": {
-  "b": {"tolerance": 0.01},
-  "walls": {"kind": "no_rise"},
-  "flight": {"max_cm_at_80": 5}
+  "b": {
+   "tolerance": 0.01
+  },
+  "walls": {
+   "kind": "no_rise"
+  },
+  "flight": {
+   "max_cm_at_80": 5
+  }
  },
  "live_ramps_flattened": 347,
  "lead_ok_crest": false,
@@ -50,5 +62,6 @@
   "Two R2 line ends sit 1.2 / 1.6 m off the ground where the OSM way ends; the free-ends and junction checks judge them.",
   "Bundle verdict expected NOT shippable: lower-than-live 6,225 m (page claim fix not on) and on-road walls 3,877 m vs live 1,675 m (highways r14s)."
  ],
- "note": "Written by the lead 2026-11-21 from the terrain study's approved plan (work/terrain_study/p2/tools/r6t_round.sh). Not committed or pushed: pushes need the owner's OK."
+ "note": "Written by the lead 2026-11-21 from the terrain study's approved plan (work/terrain_study/p2/tools/r6t_round.sh). Not committed or pushed: pushes need the owner's OK.",
+ "frames_outside_graph": true
 }
