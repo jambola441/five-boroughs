@@ -149,10 +149,17 @@ def main():
         return respond(req, output={"pass": str(tot == 0).lower(), "detail": f"no surface on path {tot} m"})
     if tid == "d_unsupported":
         run(cfg, ["$PY", "-I", "work/p2net/unsupported_check.py", RC, p["prev_nocbe"]], "d_unsupported.log")
-        u = jload(f"work/p2net/unsupported_check_{r}_nocbe.json")[f"new_vs_{cfg['prev']}_nocbe"]
+        j = jload(f"work/p2net/unsupported_check_{r}_nocbe.json")
+        u = j[f"new_vs_{cfg['prev']}_nocbe"]
         ok = u["unsupported"]["m_approx"] <= 10 and u["hanging"]["samples"] == 0
+        # lead (via macmini, 21 Nov): overpass edges (>= 4.6 m over a drivable deck) don't count; the old definition
+        # and the moved metres are reported beside the gate
+        extra = "".join(f"; {lbl} {j[k]} m" for k, lbl in (("unsupported_deck_edge_m", "unsupported (new definition)"),
+                                                           ("unsupported_old_def_m", "old definition"),
+                                                           ("overpass_edge_m", "moved to overpass edges")) if k in j)
         return respond(req, output={"pass": str(ok).lower(),
-                                    "detail": f"new unsupported {u['unsupported']['m_approx']} m (max 10); new hanging {u['hanging']['samples']}"})
+                                    "detail": f"new unsupported {u['unsupported']['m_approx']} m (max 10); new hanging "
+                                              f"{u['hanging']['samples']}" + extra})
     if tid == "d_underlay":
         run(cfg, ["$PY", "-I", "work/p2net/underlay_check.py", RC], "d_underlay.log")
         a = jload(f"work/p2net/underlay_check_{r}_nocbe.json")["underlay_above_drivable_m2"]
