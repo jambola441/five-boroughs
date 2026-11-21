@@ -373,7 +373,8 @@ def gate(cfg, g, d):
         n = d[g["step"]]
         j = json.load(open(n["out"]))
         new = [i for i in j["newList"] if i.get("c") in g.get("classes", ["step2"]) and i.get("mag", 0) >= g.get("min_m", 2)]
-        debt = [i for i in new if near(i, cfg.get("debt", []), 30)]
+        debt = [i for i in new if near(i, [e for e in cfg.get("debt", []) if e.get("check", "newlist") == "newlist"
+                                           and "x" in e], 30)]
         rest = [i for i in new if i not in debt]
         mx = b.get("marginal_step_max_m", 1e9)
         marginal = [i for i in rest if i["mag"] <= mx]
@@ -429,6 +430,8 @@ def gate(cfg, g, d):
         dual = "sets" in jk   # a kept_lidar_dual step: judge the '1,2,17' set (the lead's class-1 rule)
         rows = jk["sets"][g.get("set", "1,2,17")]["rows"] if dual else jk["rows"]
         rs = json.load(open(project(cfg["kept_reasons"]))) if cfg.get("kept_reasons") and os.path.exists(project(cfg["kept_reasons"])) else []
+        dl = [e for e in cfg.get("debt", []) if e.get("check") == "kept_lidar"]   # sites the lead put on the debt list
+        rs = rs + dl
         at = lambda r: {"x": r["c"][0], "z": r["c"][1]}
         fails = [r for r in rows if r.get("cls") == "FAIL"]
         bad = [r for r in fails if not near(at(r), [dict(q, radius_m=5) for q in rs], 5)]
@@ -465,7 +468,8 @@ def gate(cfg, g, d):
                 + (f"{len(on_lidar)} sliver spikes on LiDAR (reported, not failed); " if on_lidar else "")
                 + (f"{len(unlisted)} claims with slivers but no sliver locations logged (fails closed); " if unlisted else "")
                 + f"{len(rows)} kept claims: {by}; {len(fails)} FAIL, {len(fails) - len(bad)} of them with a reason; "
-                f"D for the cap {by_cap.get('D', 0)} of {raised} that raised anything = {d_share:.0%} (cap 20 %; "
+                + (f"{len(dl)} sites on the lead's debt list (counted as reasoned); " if dl else "")
+                + f"D for the cap {by_cap.get('D', 0)} of {raised} that raised anything = {d_share:.0%} (cap 20 %; "
                 f"includes {small_pass} PASS on only 1-2 points); verdicts on only 1-2 raised points: "
                 f"{sum(1 for r in rows if r.get('small'))} ({small_pass} PASS, "
                 f"{sum(1 for r in rows if r.get('small') and r.get('cls') == 'FAIL')} FAIL); sliver points (raised "

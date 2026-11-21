@@ -155,7 +155,9 @@ def main():
         run(cfg, ["$PY", "-I", "work/p2net/unsupported_check.py", RC, p["prev_nocbe"]], "d_unsupported.log")
         j = jload(f"work/p2net/unsupported_check_{r}_nocbe.json")
         u = j[f"new_vs_{cfg['prev']}_nocbe"]
-        ok = u["unsupported"]["m_approx"] <= 10 and u["hanging"]["samples"] == 0
+        dl = [e for e in cfg.get("debt", []) if e.get("check") == "d_unsupported"]   # the lead's debt: an allowance
+        lim = max([10] + [e["unsupported_m_max"] for e in dl])
+        ok = u["unsupported"]["m_approx"] <= lim and u["hanging"]["samples"] == 0
         # lead (via macmini, 21 Nov): overpass edges (>= 4.6 m over a drivable deck) don't count; the old definition
         # and the moved metres are reported beside the gate
         extra = "".join(f"; {lbl} {j[k]} m" for k, lbl in (("unsupported_deck_edge_m", "unsupported (new definition)"),
@@ -164,7 +166,9 @@ def main():
                                                            ("low_clearance_edge_m", "low-clearance edges 1-4.6 m over a deck (still counted)"))
                         if k in j)
         return respond(req, output={"pass": str(ok).lower(),
-                                    "detail": f"new unsupported {u['unsupported']['m_approx']} m (max 10); new hanging "
+                                    "detail": f"new unsupported {u['unsupported']['m_approx']} m (max "
+                                              + (f"{lim}: the lead's debt allows {lim - 10:g} m over 10 at "
+                                                 f"{', '.join(e['name'] for e in dl)}" if dl else "10") + "); new hanging "
                                               f"{u['hanging']['samples']}" + extra})
     if tid == "d_underlay":
         run(cfg, ["$PY", "-I", "work/p2net/underlay_check.py", RC], "d_underlay.log")
@@ -177,8 +181,12 @@ def main():
         run(cfg, ["$PY", "-I", "work/p2net/void_diff.py", f"{cfg['prev']}_nocbe", f"{r}_nocbe"], "d_void_diff.log")
         v = jload(f"work/p2net/void_diff_{cfg['prev']}_nocbe_{r}_nocbe.json")
         reg = v.get("regression_unreasoned_m2", v["regression_real_m2"])   # macmini: unreasoned regression stops
-        return respond(req, output={"pass": str(reg == 0).lower(),
-                                    "detail": f"void regression without a reason {reg} m2 (all {v['regression_real_m2']} m2)"})
+        dl = [e for e in cfg.get("debt", []) if e.get("check") == "d_void"]   # the lead's debt: an allowance in m2
+        allow = sum(e["void_m2_max"] for e in dl)
+        return respond(req, output={"pass": str(reg <= allow).lower(),
+                                    "detail": f"void regression without a reason {reg} m2 (all {v['regression_real_m2']} m2)"
+                                              + (f"; the lead's debt allows {allow} m2 ({', '.join(e['name'] for e in dl)})"
+                                                 if dl else "")})
     if tid == "d_walls":
         run(cfg, ["$PY", "-I", "work/p2net/wall_near_lane.py", RC, p["prev_nocbe"]], "d_walls.log")
         w = jload(f"work/p2net/wall_near_lane_{r}_nocbe.json")
