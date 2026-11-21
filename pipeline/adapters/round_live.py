@@ -261,7 +261,7 @@ def main():
         return respond(req, output=out) if out else respond(req, "settled", error=err)
     if tid == "qa_disk":
         free = shutil.disk_usage(project(".")).free / 1e9
-        if free < 9:  # the drape needs ~4 GB and the drive test's guard keeps 5 GB free
+        if free < 9 and cfg["mode"] != "existing":   # a dry run re-runs nothing, so it needs no space  # the drape needs ~4 GB and the drive test's guard keeps 5 GB free
             return respond(req, "not_started", error=f"only {free:.1f} GB free; need 9 GB")
         return respond(req, output={"free_gb": round(free, 1)})
     if tid == "qa_round_gate":
