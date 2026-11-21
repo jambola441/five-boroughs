@@ -288,13 +288,34 @@ def t_modelled_census(cfg, s, d):
     out = os.path.join(OUT, s["id"] + ".json")
     p = existing_or_run(cfg, s, out, lambda: run_job(
         s["id"], [py(), "-I", project("pe:diag/modelled_census.py"), project(s["terrain"]), project(s["LANES"]), out]
-        + (["--split"] if s.get("split") else []), project("pe:"), s["id"] + ".log"))
+        + split_args(s), project("pe:"), s["id"] + ".log"))
     j = json.load(open(p))
     S, R2 = j["summary"], j.get("inherited_by_r2") or {}
     g = lambda k, f: (S.get(k) or {}).get(f, 0)
+    inh = [r for r in j.get("rows", []) if r.get("cls") == "inherited"]
+    # split 3 (MODSPLIT=3, the class rule): each inherited row says whether its own OSM class is a city street
+    known = bool(inh) and all("city_street" in r for r in inh) or (not inh and s.get("split") == 3)
+    st = [r for r in inh if r.get("city_street")] if known else []
+    ot = [r for r in inh if not r.get("city_street")] if known else []
+    m = lambda rs: round(sum(r.get("len", 0) for r in rs))
     return {"out": p, "inherited_lines": g("inherited", "lines"), "inherited_m": g("inherited", "m"),
             "self_lines": g("self", "lines"), "self_m": g("self", "m"), "free_lines": g("free", "lines"),
-            "free_m": g("free", "m"), "inherited_by_r2": json.dumps(R2)}
+            "free_m": g("free", "m"), "inherited_by_r2": json.dumps(R2),
+            "inherited_street_lines": len(st) if known else -1, "inherited_street_m": m(st) if known else -1,
+            "inherited_other_lines": len(ot) if known else -1, "inherited_other_m": m(ot) if known else -1}
+
+
+def split_args(s):
+    """--split for MODSPLIT=1/2 (True, 1 or 2); split 3 needs the page editor's class-rule flag, named in the round
+    file as split_flag (its current --split would count MODSPLIT=2's split: a false pass under MODSPLIT=3)."""
+    sp = s.get("split")
+    if not sp:
+        return []
+    if sp == 3:
+        if not s.get("split_flag"):
+            raise RuntimeError(f"{s['id']}: split 3 needs split_flag (the page editor's class-rule mode) in the round file")
+        return [s["split_flag"]] if isinstance(s["split_flag"], str) else list(s["split_flag"])
+    return ["--split"]
 
 
 def t_census_fp(cfg, s, d):
@@ -341,11 +362,23 @@ def t_kept_lidar_dual(cfg, s, d):
     return {"out": p, "kept": len(judged["rows"]), "counts": json.dumps(judged["counts"])}
 
 
+def t_lift_guards(cfg, s, d):
+    """the page editor's lift guards (pe:guards/lift_guards.py): G1 vacate polygons and G2 step cells, variant vs base
+    drape, only in tiles the variant wrote."""
+    out = os.path.join(OUT, s["id"] + ".json")
+    p = existing_or_run(cfg, s, out, lambda: run_job(
+        s["id"], [py(), "-I", project("pe:guards/lift_guards.py"), ref(cfg, d, s["drape"]), project(s["base_drape"]),
+                  project(s["LANES"]), out], project("pe:"), s["id"] + ".log"))
+    t = json.load(open(p))["total"]
+    return {"out": p, "tiles": t.get("tiles", 0), "vacate_polys": t.get("vacate_polys", 0),
+            "step_cells": json.dumps(t.get("step_cells", {})), "defect_step_cells": t.get("defect_step_cells", 0)}
+
+
 TOOLS = {"drape": t_drape, "lift_gate": t_lift_gate, "newlist": t_newlist, "deck_under": t_deck_under,
          "ramps": t_ramps, "trace": t_trace, "lidar": t_lidar, "census": t_census,
          "census_rs": lambda cfg, s, d: t_census(cfg, {**s, "rs_events": True}, d), "kept_lidar": t_kept_lidar, "tent_diff": t_tent_diff,
          "modelled_census": t_modelled_census, "census_fp": t_census_fp, "fp_new": t_fp_new, "kept_lidar2": t_kept_lidar2,
-         "kept_lidar_dual": t_kept_lidar_dual}
+         "kept_lidar_dual": t_kept_lidar_dual, "lift_guards": t_lift_guards}
 
 
 # ---------- gates (computed in code; budgets from the round file, default 0 = must not rise) ----------
@@ -420,11 +453,91 @@ def gate(cfg, g, d):
     if k == "modelled_split":   # the coordinator's rule: with the switch on, no line is modelled only by inheritance
         on, off = d[g["step"]], d[g["base_step"]]
         rides = d.get("p_fp_new", {}).get("rows", "?")
+        if g.get("scope") == "city_street":   # the lead's term (a): only city-street-class lines are gated
+            if int(on.get("inherited_street_lines", -1)) < 0:
+                return False, ("switch on: the census doesn't class its inherited lines (no city_street per row): "
+                               "can't judge the city-street scope, fails closed"), {}
+            ok = int(on["inherited_street_lines"]) == 0
+            return ok, (f"switch on: {on['inherited_street_lines']} city-street-class lines / {on['inherited_street_m']} m "
+                        f"inherit 'modelled' (must be 0); {on['inherited_other_lines']} motorway / trunk / ext lines / "
+                        f"{on['inherited_other_m']} m still inherit (reported, not gated: the lead's scope); switch off: "
+                        f"{off['inherited_lines']} lines / {off['inherited_m']} m; polygons newly riding with the switch on: "
+                        f"{rides}"), {}
         ok = int(on["inherited_lines"]) == 0
         return ok, (f"switch on: {on['inherited_lines']} lines / {on['inherited_m']} m inherit 'modelled' (must be 0); "
                     f"switch off (the lead's required count): {off['inherited_lines']} deck lines / {off['inherited_m']} m "
                     f"excluded only through a lane-hugging neighbour, of them by R2 lines {off['inherited_by_r2']}; "
                     f"polygons newly riding with the switch on: {rides}"), {}
+    if k in ("frames_capture", "frames_structure"):   # G0 / G3, stopping checks before Hydrogen
+        f = os.path.join(project(cfg["frames"]["folder"]), "guards_frames.json")
+        if not os.path.exists(f):
+            return False, f"no guards_frames.json in {cfg['frames']['folder']} (the page editor writes it with the frames): fails closed", {}
+        pairs = json.load(open(f)).get("pairs", [])
+        lim = g.get("max_diff_pct", 0.05)
+        if k == "frames_capture":   # A vs B pixel difference on tiles the variant did not write
+            bad = [x for x in pairs if x.get("capture_diff_pct") is None or x["capture_diff_pct"] >= lim]
+            return bool(pairs) and not bad, (f"{len(pairs)} pairs; {len(bad)} with a capture difference >= {lim} % on "
+                                             f"unwritten tiles (must be 0: re-shoot before Hydrogen)"), \
+                {"unbudgeted": [f"{x.get('pose')}: {x.get('capture_diff_pct')} %" for x in bad][:40]}
+        bad = [x for x in pairs if x.get("structure_lost") is None or x["structure_lost"] > 0]
+        return bool(pairs) and not bad, (f"{len(pairs)} poses; {len(bad)} lose structure pieces A vs B (must be 0); "
+                                         f"triangles / instances per pose in items"), \
+            {"unbudgeted": [f"{x.get('pose')}: {x.get('structure_lost')} pieces lost" for x in bad][:40],
+             "listed": [f"{x.get('pose')}: tris {x.get('tris_a')} -> {x.get('tris_b')}, instances {x.get('inst_a')} -> "
+                        f"{x.get('inst_b')}" for x in pairs][:40]}
+    if k in ("hydrogen_pose", "hydrogen_none_worse"):   # read Hydrogen's per-site rows (hydrogen_frames.json)
+        f = os.path.join(OUT, "hydrogen_frames.json")
+        rows = json.load(open(f)) if os.path.exists(f) else []
+        if not rows:
+            return False, "no Hydrogen rows: fails closed", {}
+        if k == "hydrogen_pose":
+            mine = [r for r in rows if g["pose"] in r["site"]]
+            if not mine:
+                return False, f"no frame for pose {g['pose']} was reviewed: fails closed", {}
+            ok = all(r.get("answer") == "yes" for r in mine)
+            return ok, (f"{g['pose']}: Hydrogen answers {', '.join(repr(r.get('answer')) for r in mine)} to "
+                        f"\"{g['question']}\" (must be yes): {'; '.join(r.get('answer_why', '') for r in mine)}"), \
+                {"unbudgeted": [] if ok else [f"{r['site']}: {r.get('answer')}: {r.get('answer_why', '')}" for r in mine]}
+        stop = ("worse",) + (() if g.get("allow_mixed") else ("mixed",))
+        bad = [r for r in rows if r.get("verdict") in stop or not r.get("verdict")]
+        by = {}
+        for r in rows: by[r.get("verdict") or "none"] = by.get(r.get("verdict") or "none", 0) + 1
+        return not bad, (f"{len(rows)} poses reviewed: {json.dumps(by)}; {len(bad)} judged "
+                         f"{'/'.join(stop)} or unjudged (must be 0)"), \
+            {"unbudgeted": [f"{r['site']}: {r.get('verdict') or 'no verdict'}: new {'; '.join(r.get('new', []))[:200]}"
+                            for r in bad][:40]}
+    if k == "lift_vacate":   # G1: no raise may leave a real street (LiDAR at the base height) undrawn
+        jg = json.load(open(d[g["step"]]["out"]))
+        dl = [e for e in cfg.get("debt", []) if e.get("check") == "lift_vacate"]
+        at = lambda v: {"x": v["c"][0], "z": v["c"][1]}
+        bad = [v for v in jg.get("vacate", []) if not near(at(v), [dict(e, radius_m=5) for e in dl], 5)]
+        row = lambda v: (f"vacate {v['tile'].replace('.drape.json', '')} {v['poly'][0]} {v['poly'][1]} at {v['c'][0]},"
+                         f"{v['c'][1]} (raised {v.get('raised')}/{v.get('of')} vertices up to {v.get('dmax')} m; base "
+                         f"height on LiDAR at {v.get('base_on_lidar')}/{v.get('sampled')})")
+        return not bad, (f"{len(jg.get('vacate', []))} vacate polygons in {jg['total'].get('tiles', 0)} written tiles; "
+                         f"{len(jg.get('vacate', [])) - len(bad)} on the lead's debt list; {len(bad)} not (must be 0)"), \
+            {"unbudgeted": [row(v) for v in bad][:40], "listed": [row(v) for v in jg.get("vacate", [])][:40]}
+    if k == "lift_step":   # G2: low-only steps none; high-only within budget and only in the lead's allowed tiles
+        jg = json.load(open(d[g["step"]]["out"]))
+        allowed = set(g.get("high_only_tiles", []))
+        tid = lambda t: t.replace(".drape.json", "").replace("tile_", "")
+        steps = jg.get("steps", [])
+        low = [x for x in steps if x["cls"] == "low-only"]
+        high = [x for x in steps if x["cls"] == "high-only"]
+        high_out = [x for x in high if tid(x["tile"]) not in {tid(a) for a in allowed}]
+        lim_lo, lim_hi = b.get("step_low_only", 0), b.get("step_high_only", 0)
+        ok = len(low) <= lim_lo and len(high) <= lim_hi and not high_out
+        per = {}
+        for x in steps:
+            per.setdefault(tid(x["tile"]), {}).setdefault(x["cls"], 0)
+            per[tid(x["tile"])][x["cls"]] += 1
+        two = jg["total"].get("step_cells", {}).get("two-level", 0)
+        return ok, (f"low-only {len(low)} (budget {lim_lo}); high-only {len(high)} (budget {lim_hi}, allowed tiles "
+                    f"{', '.join(sorted(tid(a) for a in allowed)) or 'none'}; {len(high_out)} outside them); two-level "
+                    f"{two} (allowed); none {jg['total'].get('step_cells', {}).get('none', 0)} (reported); per tile "
+                    f"{json.dumps(per)}"), \
+            {"unbudgeted": [f"{x['cls']} step {x['tile'].replace('.drape.json', '')} at {x['x']},{x['z']} ({x['lo']} -> "
+                            f"{x['hi']} m)" for x in low + high_out][:40]}
     if k == "kept_lidar":   # every kept claim the rule raised: on LiDAR (PASS), or a FAIL with a reason on file
         jk = json.load(open(d[g["step"]]["out"]))
         dual = "sets" in jk   # a kept_lidar_dual step: judge the '1,2,17' set (the lead's class-1 rule)
@@ -589,7 +702,11 @@ def hydrogen_frames(cfg):
     def ftag(site):   # keyed by content: a re-shot frame gets a fresh review, an unchanged one keeps its verdict
         h = hashlib.sha256(b"".join(open(os.path.join(folder, f), "rb").read() for f in sites[site])).hexdigest()[:10]
         return "page_" + re.sub(r"[^A-Za-z0-9_.-]", "_", site) + "_" + h
-    tags = {site: ftag(site) for site in sites}
+    # a pose's own yes/no question (a hydrogen_pose gate: the lead's condition at that pose) rides on its review
+    qs = {site: [g for g in cfg.get("gates", []) if g.get("check") == "hydrogen_pose" and g.get("pose") and g["pose"] in site]
+          for site in sites}
+    tags = {site: ftag(site) + ("_q" + hashlib.sha256("".join(g["question"] for g in qs[site]).encode()).hexdigest()[:6]
+                                if qs[site] else "") for site in sites}
     for site, files in sites.items():   # at most HYD_PARALLEL Hydrogen calls at once; never block past the deadline
         tag = tags[site]
         st = state(tag)
@@ -605,13 +722,19 @@ def hydrogen_frames(cfg):
                 f"{f} = {names[i] if i < len(names) else 'panel ' + str(i + 1)}" for i, f in enumerate(files)) + "."
             panels = ", ".join(names[:len(files)])
         try:
+            ask = PAGE_ASK.format(panels=panels)
+            if qs[site]:
+                ask += ("\n\nAlso answer, about the LAST panel only: " + " / ".join(g["question"] for g in qs[site])
+                        + " Add to the same JSON block \"answer\": \"yes\" or \"no\", and \"answer_why\": one sentence.")
             v = hydrogen_review(tag, [(f, os.path.join(folder, f)) for f in files], where,
-                                ask=PAGE_ASK.format(panels=panels), wait=0)   # start or collect; the driver comes back
+                                ask=ask, wait=0)   # start or collect; the driver comes back
         except Running:
             waiting += 1
             continue
         rows.append({"site": site, "files": files, "verdict": v.get("verdict", ""), "fixed": v.get("fixed_vs_first", []),
-                     "new": v.get("new_vs_first", []), "seconds": v["seconds"]})
+                     "new": v.get("new_vs_first", []), "seconds": v["seconds"],
+                     **({"question": " / ".join(g["question"] for g in qs[site]), "answer": str(v.get("answer", "")).lower(),
+                         "answer_why": v.get("answer_why", "")} if qs[site] else {})})
     if waiting:
         raise Running(f"job running: Hydrogen, {len(rows)} of {len(sites)} sites reviewed")
     json.dump(rows, open(os.path.join(OUT, "hydrogen_frames.json"), "w"), indent=1)

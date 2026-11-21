@@ -15,7 +15,7 @@ for f in os.listdir(root):   # the page editor's own top-level files (specs, not
     p = os.path.join(root, f)
     if os.path.isfile(p) and not os.path.islink(p):
         new.add(hashlib.sha256(open(p, "rb").read()).hexdigest())
-for tree in ("phaseb", "src", "diag", "reach", "staged"):
+for tree in ("phaseb", "src", "diag", "reach", "guards", "staged"):
     for d, _, fs in os.walk(os.path.join(root, tree)):
         for f in fs:
             p = os.path.join(d, f)

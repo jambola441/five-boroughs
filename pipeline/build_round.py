@@ -155,7 +155,9 @@ PAGE_OUT = {"drape": ["out", "tiles_written", "tiles_total"],
             "kept_lidar": ["out", "kept", "counts"],
             "tent_diff": ["out", "n_new", "m2_new", "tiles_changed"],
             "modelled_census": ["out", "inherited_lines", "inherited_m", "self_lines", "self_m", "free_lines", "free_m",
-                                "inherited_by_r2"],
+                                "inherited_by_r2", "inherited_street_lines", "inherited_street_m", "inherited_other_lines",
+                                "inherited_other_m"],
+            "lift_guards": ["out", "tiles", "vacate_polys", "step_cells", "defect_step_cells"],
             "census_fp": ["out", "tents_n", "tents_m2", "overflow_polys"],
             "fp_new": ["out", "rows"], "kept_lidar2": ["out", "kept", "counts"],
             "kept_lidar_dual": ["out", "kept", "counts"],
@@ -170,12 +172,19 @@ def page_tasks(cfg):
     t += [node(s["id"], "page", PAGE_OUT[s["tool"]], after=["p_disk"] + s.get("after", []), prompt=s["tool"])
           for s in cfg["steps"]]
     gates = [g["id"] for g in cfg.get("gates", [])]
-    t += [node(g["id"], "page", ["pass", "detail", "items"], after=[g["step"]] + ([g["base_step"]] if g.get("base_step") else []) + list(g.get("also", [])),
+    # a gate on step "frames" (G0 capture, G3 structure) reads the frames folder: it runs after frames_ready and
+    # Hydrogen waits for it (a stopping check before Hydrogen)
+    # a gate on step "hydrogen" reads Hydrogen's rows: it runs after hydrogen_frames
+    on = lambda g: (["frames_ready"] if g["step"] == "frames" else ["hydrogen_frames"] if g["step"] == "hydrogen"
+                    else [g["step"]])
+    t += [node(g["id"], "page", ["pass", "detail", "items"], after=on(g) + ([g["base_step"]] if g.get("base_step") else []) + list(g.get("also", [])),
                validated=True) for g in cfg.get("gates", [])]
+    fgates = [g["id"] for g in cfg.get("gates", []) if g["step"] == "frames"]
     fr = []
     if cfg.get("frames"):
         t += [node("frames_ready", "page", ["images", "request"], after=cfg["frames"].get("after", steps)),
-              node("hydrogen_frames", "page", ["frames", "verdicts", "rows"], after=["frames_ready"], validated=True)]
+              node("hydrogen_frames", "page", ["frames", "verdicts", "rows"], after=["frames_ready"] + fgates,
+                   validated=True)]
         fr = ["hydrogen_frames"]
     if cfg.get("gates_only"):   # a companion round: measured steps and gates only, reported with its main round
         return t
