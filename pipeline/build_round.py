@@ -203,7 +203,8 @@ def swarm_tasks(cfg):
     and carries its last summary), the check gate, and 'after' helpers. swarm_report after every main and helper
     (it reads the checks from the run state, so one failed check doesn't hide the measurements)."""
     H = ["findings", "contradictions", "minutes_wall", "cost_usd", "file"]
-    M = ["card", "summary", "conf_counts", "open_questions", "minutes_wall", "cost_usd", "minutes_reported", "denied_tool_calls"]
+    M = ["card", "summary", "conf_counts", "open_questions", "minutes_wall", "cost_usd", "minutes_reported", "denied_tool_calls",
+         "hints_conf", "helpers", "self_check"]
     t, last = [], []
     for lane in cfg["lanes"]:
         prev = None

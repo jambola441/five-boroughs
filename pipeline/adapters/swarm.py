@@ -27,8 +27,10 @@ CLAUDE = os.environ.get("CLAUDE_BIN") or shutil.which("claude") or os.path.expan
 MAIN_SCHEMA = {"type": "object", "properties": {
     "card": {"type": "string"}, "summary": {"type": "string"},
     "conf_counts": {"type": "object", "properties": {k: {"type": "integer"} for k in "ABC"}, "required": list("ABC")},
-    "open_questions": {"type": "array", "items": {"type": "string"}}, "minutes": {"type": "number"}},
-    "required": ["card", "summary", "conf_counts", "open_questions"]}
+    "hints_conf": {"type": "object", "properties": {k: {"type": "integer"} for k in "ABC"}},
+    "open_questions": {"type": "array", "items": {"type": "string"}}, "minutes": {"type": "number"},
+    "helpers": {"type": "string"}, "check": {"type": "string"}},
+    "required": ["card", "summary", "conf_counts", "open_questions", "minutes", "check"]}
 HELPER_SCHEMA = {"type": "object", "properties": {
     "findings": {"type": "array", "items": {"type": "object", "properties": {
         "what": {"type": "string"}, "value": {"type": "string"}, "src": {"type": "string"},
@@ -54,6 +56,13 @@ def brief(cfg, ref):
     raise RuntimeError(f"no section '{sec}' in {f}")
 
 
+def fill(cfg, item, text):
+    """{id} and the item's own placeholders (cfg vars[item], e.g. {COMPLEX_ID} {NAME} {LANE} {TURN} {PATTERN})."""
+    for k, v in {"id": item, "NYC_ROOT": project(".").rstrip("/.").rstrip("/"), **(cfg.get("vars", {}).get(item) or {})}.items():
+        text = text.replace("{" + k + "}", str(v))
+    return text
+
+
 def lanes(cfg):
     return [[str(x) for x in lane] for lane in cfg["lanes"]]
 
@@ -65,13 +74,13 @@ def prev_item(cfg, item):
     return None
 
 
-def agent(name, prompt, cfg, model, budget, schema, writes=()):
-    """Start or collect one sandboxed claude -p job; returns (structured output, cost_usd, minutes)."""
+def agent(name, prompt, cfg, model, budget, schema, writes=(), bash=(), subagents=False):
+    """Start or collect one sandboxed claude -p job; returns (structured output, cost_usd, minutes, denials).
+    bash: allowed command prefixes only (e.g. 'date'); subagents: the Agent tool (in-turn helpers; they can't write)."""
     r = root(cfg)
-    allow = ["Read", "Glob", "Grep"] + (["WebFetch", "WebSearch"] if cfg.get("web", True) else [])
-    allow += [f"{t}(./{w})" for w in writes for t in ("Write", "Edit")]
-    tools = ",".join(["Read", "Glob", "Grep"] + (["WebFetch", "WebSearch"] if cfg.get("web", True) else [])
-                     + (["Write", "Edit"] if writes else []))
+    base = ["Read", "Glob", "Grep"] + (["WebFetch", "WebSearch"] if cfg.get("web", True) else []) + (["Agent"] if subagents else [])
+    allow = base + [f"{t}(./{w})" for w in writes for t in ("Write", "Edit")] + [f"Bash({b}:*)" for b in bash]
+    tools = ",".join(base + (["Write", "Edit"] if writes else []) + (["Bash"] if bash else []))
     cmd = [CLAUDE, "-p", "--restricted", "--setting-sources", "", "--strict-mcp-config", "--no-session-persistence",
            "--model", model, "--tools", tools, "--permission-mode", "dontAsk", "--allowedTools", *allow,
            *sum((["--add-dir", project(d)] for d in cfg.get("read_dirs", [])), []),
@@ -124,6 +133,8 @@ def main():
                 m = d.get(f"{it}__main", {})
                 row = {"item": it, "lane": lane_i + 1, "check": check_state(it),
                        "main_minutes": float(m.get("minutes_wall", 0)), "main_cost_usd": float(m.get("cost_usd", 0)),
+                       "minutes_reported": m.get("minutes_reported", ""), "hints_conf": json.loads(m.get("hints_conf") or "{}"),
+                       "helpers": m.get("helpers", ""), "denied_tool_calls": m.get("denied_tool_calls", ""),
                        "conf_counts": json.loads(m.get("conf_counts") or "{}"),
                        "open_questions": json.loads(m.get("open_questions") or "[]"),
                        "summary": m.get("summary", "")}
@@ -148,7 +159,7 @@ def main():
     if part == "check":
         files = [os.path.join(root(cfg), f) for f in item_files(cfg, item)]
         cmd = [project(x) if x.startswith(("pe:", "runs:")) else x for x in cfg["check"]]
-        cmd = [c.format(id=item, card=files[0]) for c in cmd]
+        cmd = [fill(cfg, item, c).replace("{card}", files[0]) for c in cmd]
         p = subprocess.run(cmd, cwd=root(cfg), capture_output=True, text=True, timeout=100)
         why = (p.stdout.strip() or p.stderr.strip())[-600:]
         return respond(req, output={"pass": str(p.returncode == 0).lower(),
@@ -168,12 +179,18 @@ def main():
             pm = d.get(f"{prev}__main", {})
             ctx.append(f"The previous item in your lane was {prev} (its card: {pm.get('card', '')}); its summary: "
                        f"{pm.get('summary', '')[:600]}. Reuse what you learned about sources and conventions.")
-        prompt = brief(cfg, cfg["main"]["brief"]).replace("{id}", item) + "\n\n" + "\n".join(ctx)
+        if cfg["main"].get("output_note"):
+            ctx.append(cfg["main"]["output_note"])
+        prompt = fill(cfg, item, brief(cfg, cfg["main"]["brief"])) + "\n\n" + "\n".join(ctx)
         out, cost, mins, denied = agent(f"{item}__main", prompt, cfg, cfg["main"].get("model", "claude-opus-5-5"),
-                                        cfg["main"].get("budget_usd", 5), MAIN_SCHEMA, writes=item_files(cfg, item))
+                                        cfg["main"].get("budget_usd", 5), MAIN_SCHEMA, writes=item_files(cfg, item),
+                                        bash=[fill(cfg, item, b) for b in cfg["main"].get("bash_allow", [])],
+                                        subagents=cfg["main"].get("subagents", False))
         resp = {"card": out["card"], "summary": out["summary"], "conf_counts": json.dumps(out["conf_counts"]),
                 "open_questions": json.dumps(out.get("open_questions", [])), "minutes_wall": mins,
-                "minutes_reported": out.get("minutes", ""), "cost_usd": round(cost, 3), "denied_tool_calls": denied}
+                "minutes_reported": out.get("minutes", ""), "cost_usd": round(cost, 3), "denied_tool_calls": denied,
+                "hints_conf": json.dumps(out.get("hints_conf", {})), "helpers": out.get("helpers", ""),
+                "self_check": out.get("check", "")}
         r = {"protocol": "swarm.worker/v1", "request_id": req["request_id"], "outcome": "settled",
              "output": {k: str(v) for k, v in resp.items()}, "cost_usd": cost}
         return json.dump(r, _sys.stdout)
@@ -184,7 +201,7 @@ def main():
         ctx.append(f"Shared rules: {cfg['conventions']} (read-only).")
     if h.get("when") == "after":
         ctx.append(f"Check the researched files for this item: {', '.join(item_files(cfg, item))}.")
-    prompt = brief(cfg, h["brief"]).replace("{id}", item) + "\n\n" + "\n".join(ctx)
+    prompt = fill(cfg, item, brief(cfg, h["brief"])) + "\n\n" + "\n".join(ctx)
     out, cost, mins, denied = agent(f"{item}__{part}", prompt, cfg, h.get("model", "claude-sonnet-5-5"),
                                     h.get("budget_usd", 2), HELPER_SCHEMA)
     os.makedirs(os.path.join(root(cfg), "helpers"), exist_ok=True)

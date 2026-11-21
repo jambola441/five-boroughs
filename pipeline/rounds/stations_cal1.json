@@ -1,0 +1,130 @@
+{
+ "round": "Stations calibration 1: 10 complexes, 5x2x2 (walkable stations)",
+ "kind": "research_swarm",
+ "note": "owner-approved calibration (2026-11-21); content by the stations coordinator (calibration/complexes.json, briefs, check_card.py); measures minutes, cost and card quality per complex before the 445-complex swarm",
+ "root": "work/walkable_stations/calibration",
+ "lanes": [
+  [
+   "321",
+   "14"
+  ],
+  [
+   "262",
+   "241"
+  ],
+  [
+   "81",
+   "431"
+  ],
+  [
+   "626",
+   "625"
+  ],
+  [
+   "46",
+   "300"
+  ]
+ ],
+ "vars": {
+  "321": {
+   "COMPLEX_ID": "321",
+   "NAME": "18 St",
+   "LANE": 1,
+   "TURN": 1,
+   "PATTERN": "P1_platform_fare"
+  },
+  "14": {
+   "COMPLEX_ID": "14",
+   "NAME": "23 St",
+   "LANE": 1,
+   "TURN": 2,
+   "PATTERN": "P1_platform_fare"
+  },
+  "262": {
+   "COMPLEX_ID": "262",
+   "NAME": "67 Av",
+   "LANE": 2,
+   "TURN": 1,
+   "PATTERN": "P2_ind_mezzanine"
+  },
+  "241": {
+   "COMPLEX_ID": "241",
+   "NAME": "15 St-Prospect Park",
+   "LANE": 2,
+   "TURN": 2,
+   "PATTERN": "P2_ind_mezzanine"
+  },
+  "81": {
+   "COMPLEX_ID": "81",
+   "NAME": "111 St",
+   "LANE": 3,
+   "TURN": 1,
+   "PATTERN": "P3_el_house"
+  },
+  "431": {
+   "COMPLEX_ID": "431",
+   "NAME": "Intervale Av",
+   "LANE": 3,
+   "TURN": 2,
+   "PATTERN": "P3_el_house"
+  },
+  "626": {
+   "COMPLEX_ID": "626",
+   "NAME": "Botanic Garden / Franklin Av-Medgar Evers College",
+   "LANE": 4,
+   "TURN": 1,
+   "PATTERN": "P5_transfer"
+  },
+  "625": {
+   "COMPLEX_ID": "625",
+   "NAME": "Delancey St-Essex St",
+   "LANE": 4,
+   "TURN": 2,
+   "PATTERN": "P5_transfer"
+  },
+  "46": {
+   "COMPLEX_ID": "46",
+   "NAME": "Cortelyou Rd",
+   "LANE": 5,
+   "TURN": 1,
+   "PATTERN": "P4_opencut_house"
+  },
+  "300": {
+   "COMPLEX_ID": "300",
+   "NAME": "191 St",
+   "LANE": 5,
+   "TURN": 2,
+   "PATTERN": "P6_deep_elevator"
+  }
+ },
+ "conventions": "conventions.md",
+ "read_dirs": [
+  "work/walkable_stations",
+  "subways"
+ ],
+ "web": true,
+ "main": {
+  "brief": "brief_main.md",
+  "writes": [
+   "cards/cx_{id}.json",
+   "cards/cx_{id}.md"
+  ],
+  "model": "claude-opus-5-5",
+  "budget_usd": 10,
+  "subagents": true,
+  "bash_allow": [
+   "date",
+   "{NYC_ROOT}/.venv/bin/python -I {NYC_ROOT}/work/walkable_stations/calibration/check_card.py"
+  ],
+  "output_note": "Your structured output (the JSON schema) carries the brief's turn output block: card = CARD, summary = the 3 SUMMARY lines joined with newlines, conf_counts = FACTS_CONF, hints_conf = HINTS_CONF, open_questions, minutes = MINUTES, helpers = HELPERS, check = CHECK. The graph's helper mechanism is the Agent tool: start each helper as a subagent with its brief from brief_helpers.md filled in. Helpers cannot write anything. Nobody has a shell except your two allowed commands (date, and check_card.py through ROOT's venv python), so a helper reads CSV and JSON with Read and Grep, not python -c. Photos: a web fetch can return an image for viewing; open it with Read to look at it. There is no browser here, so no Street View screenshots: say so in NOT_FOUND where it matters."
+ },
+ "helpers": [],
+ "check": [
+  "{NYC_ROOT}/.venv/bin/python",
+  "-I",
+  "{NYC_ROOT}/work/walkable_stations/calibration/check_card.py",
+  "{card}"
+ ],
+ "call_budget_usd": 10,
+ "workers": 6
+}

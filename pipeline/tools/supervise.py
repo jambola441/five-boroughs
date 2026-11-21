@@ -251,7 +251,10 @@ def tick():
                                capture_output=True, text=True, env=env)
             event(name, "retry", step=tid, why=why, ok=r.returncode == 0, out=(r.stdout + r.stderr).strip()[-200:])
         with open(os.path.join(LOG, f"resume_{name}.txt"), "w") as f:
-            subprocess.Popen(["irrigator", "resume", os.path.join(run_dir, "run")], stdout=f, stderr=subprocess.STDOUT,
+            cfg = json.load(open(os.path.join(run_dir, "round.json")))   # a swarm's per-call budget and lane count
+            extra = (["--call-budget", str(cfg["call_budget_usd"])] if cfg.get("call_budget_usd") else []) + \
+                    (["--workers", str(cfg["workers"])] if cfg.get("workers") else [])
+            subprocess.Popen(["irrigator", "resume", *extra, os.path.join(run_dir, "run")], stdout=f, stderr=subprocess.STDOUT,
                              env=env, start_new_session=True)
         event(name, "resume", steps=[t[0] for t in todo])
 
