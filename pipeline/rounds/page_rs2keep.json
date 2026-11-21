@@ -1,5 +1,5 @@
 {
- "round": "Page round 3: rule-2 same-deck keep with >= 5 m² loser area (RS2KEEP=2) on B′ + reslocal=1, r6s2 + r14s",
+ "round": "Page round 3: rule-2 same-deck keep with >= 5 m² loser area (RS2KEEP=1 RS2AREA=1) on B′ + reslocal=1, r6s2 + r14s",
  "kind": "page_round",
  "mode": "live",
  "accept": "explore",
@@ -32,9 +32,13 @@
    "base": "v1c_r6s2_r14s_lr3_rl1b",
    "LIFTRULE": 3,
    "RESLOCAL": 1,
-   "RS2KEEP": 2,
+   "RS2KEEP": 1,
    "TERV": "v1c_r6s2",
-   "LANES": "highways/work/p2net/final_fdr/r14s"
+   "LANES": "highways/work/p2net/final_fdr/r14s",
+   "RS2AREA": 1,
+   "extra_switches": [
+    "RS2AREA"
+   ]
   },
   {
    "id": "p_lift_gate",
@@ -113,24 +117,32 @@
    "list": "step:p_newlist",
    "LIFTRULE": 3,
    "RESLOCAL": 1,
-   "RS2KEEP": 2,
+   "RS2KEEP": 1,
    "after": [
     "p_newlist"
    ],
    "TERV": "v1c_r6s2",
-   "LANES": "highways/work/p2net/final_fdr/r14s"
+   "LANES": "highways/work/p2net/final_fdr/r14s",
+   "RS2AREA": 1,
+   "extra_switches": [
+    "RS2AREA"
+   ]
   },
   {
    "id": "p_census",
    "tool": "census_rs",
    "LIFTRULE": 3,
    "RESLOCAL": 1,
-   "RS2KEEP": 2,
+   "RS2KEEP": 1,
    "after": [
     "p_newlist"
    ],
    "TERV": "v1c_r6s2",
-   "LANES": "highways/work/p2net/final_fdr/r14s"
+   "LANES": "highways/work/p2net/final_fdr/r14s",
+   "RS2AREA": 1,
+   "extra_switches": [
+    "RS2AREA"
+   ]
   },
   {
    "id": "p_census_base",
@@ -228,7 +240,7 @@
   ],
   "variants": [
    "LIFTRULE=3 RESLOCAL=1",
-   "LIFTRULE=3 RESLOCAL=1 RS2KEEP=2"
+   "LIFTRULE=3 RESLOCAL=1 RS2KEEP=1 RS2AREA=1 (?rs2keep=1&rs2area=1)"
   ],
   "note": "6-8 kept-claim sites, picked by the page editor from the new list and trace"
  },
@@ -238,6 +250,7 @@
  "kept_reasons": "pe:data/census/rs2keep_kept_reasons.json",
  "require_sha": {
   "pe:phaseb/setd_core.mjs": "507283f87a1695385beec8a5b5c0c75069392a28baa4879dc02e7f4aded36d23",
-  "pe:phaseb/bridge_own_census.mjs": "f5431fb419d6e312d93122cdd512dacb27be2a50ed18597aa5db23365ac4324c"
+  "pe:phaseb/bridge_own_census.mjs": "f5431fb419d6e312d93122cdd512dacb27be2a50ed18597aa5db23365ac4324c",
+  "pe:phaseb/fb_env_preload.mjs": "bd3ecea692f66a2d1ab944ec28a9cca729f921f89014f11bae84adfe9b11df15"
  }
 }
