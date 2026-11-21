@@ -281,6 +281,8 @@ def policy_debt(entry):
     if not any(e.get("name") == entry["name"] for e in r.get("debt", [])):
         r.setdefault("debt", []).append(entry)
         r.setdefault("changes", []).append(datetime.date.today().isoformat() + ": " + entry["name"])
+        if r.get("frames") is not None and entry.get("frame_pose"):   # the lead: every P2 debt site gets a frame
+            r["frames"].setdefault("poses", []).append(entry["frame_pose"])
         json.dump(r, open(rp, "w"), indent=1, ensure_ascii=False)
 
 
@@ -394,7 +396,9 @@ def gate(cfg, g, d):
             sites = [r["tile"] for r in j["rows"] if r["n_var"] > r["n_base"]]
             policy_debt({"name": f"policy 2: tents grow at existing sites {sites} (+{t['n_new']}, +{t['m2_new']} m²)",
                          "tents_n": t["n_new"], "tents_m2": t["m2_new"], "owner": "page: tents class",
-                         "pay_back": "with the tents class fix", "added_by": "policy 2 (POLICY.md)"})
+                         "pay_back": "with the tents class fix", "added_by": "policy 2 (POLICY.md)",
+                         "frame_pose": "policy 2 tent site(s): " + "; ".join(
+                             f"{w[0]},{w[1]} ({tile})" for tile, w in new[:4])})
             return True, (f"tents {t['n_var']} vs base {t['n_base']}: {t['n_new']} new, {t['m2_new']} m², all at existing "
                           f"tent sites {sites}: on the debt list by policy 2"), {"unbudgeted": [f"tent {w[2]} m tall, {w[3]} m² at {w[0]},{w[1]} ({tile})" for tile, w in new][:40]}
         return t["n_new"] <= lim, (f"tents {t['n_var']} vs base {t['n_base']}: {t['n_new']} new, {t['m2_new']} m² "

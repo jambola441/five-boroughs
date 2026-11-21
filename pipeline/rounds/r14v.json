@@ -3,7 +3,7 @@
  "prev": "r14t",
  "kind": "highway_round",
  "mode": "live",
- "note": "r14v (macmini, 2026-11-21): r14u's chain with drive_band_clear v2 (keeps step faces <= 1 m between overlapping decks; removes taller faces only below road + 4.6 m) and unsupported_check with overpass edges (>= 4.6 m clearance, lead) excluded from the gate. Code pinned at start.",
+ "note": "r14v (macmini, 2026-11-21): r14u's chain with drive_band_clear v2 (keeps step faces <= 1 m between overlapping decks; removes taller faces only below road + 4.6 m) and unsupported_check with overpass edges (>= 4.6 m clearance, lead) excluded from the gate. Code pinned at start. Lead: go + A (2026-11-21).",
  "p2_terv": "v1c_r6k",
  "input_build": "work/p2net/b_fdr_r14q",
  "post_only": true,
@@ -76,10 +76,10 @@
  "after_part_move": [
   "drive_band_clear"
  ],
- "walls_abs_pending": {
+ "walls_abs": {
   "metric": "m",
   "max_m": 1675.0,
-  "unreasoned_gate": false,
-  "note": "macmini relays the lead's decision (A); NOT active until the lead confirms directly: move this to walls_abs"
+  "unreasoned_gate": true,
+  "note": "the lead's decision (A), confirmed directly 2026-11-21: on_road_m <= 1675.0 (live's); triangles reported; unreasoned-triangle gate KEPT, with drive_band_clear's kept step faces reasoned by the class 'overlapping decks at different heights'"
  }
 }

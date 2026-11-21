@@ -117,8 +117,11 @@ def main():
                      and k != "removed_by_material_retaining_wall" and v}
             if other:
                 return respond(req, output={"pass": "false", "step": f"{st} removed non-wall material: {other}"})
+            kept = "".join(f", {lbl} {j[k]}" for k, lbl in (("kept_step_faces", "step faces kept"),
+                                                             ("kept_steps_in_wheel_path", "of them in a wheel path"))
+                           if k in j)
             return respond(req, output={"pass": "true", "step": f"{st}: {j.get('removed_by_material_retaining_wall', 0)} "
-                                                              f"retaining_wall triangles removed, nothing else"})
+                                                              f"retaining_wall triangles removed, nothing else{kept}"})
         return respond(req, output={"pass": "true", "step": st})
 
     if tid == "h_cbe_copy":
