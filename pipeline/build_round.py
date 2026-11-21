@@ -202,9 +202,10 @@ def swarm_tasks(cfg):
     start at once), the main agent after them and after the previous item's main in its lane (so a lane is sequential
     and carries its last summary), the check gate, and 'after' helpers. swarm_report after every main and helper
     (it reads the checks from the run state, so one failed check doesn't hide the measurements)."""
-    H = ["findings", "contradictions", "minutes_wall", "cost_usd", "file"]
+    H = ["findings", "contradictions", "minutes_wall", "cost_usd", "file", "tokens"]
+    F = ["gate_before", "contradictions_in", "ran", "minutes_wall", "cost_usd", "tokens"]
     M = ["card", "summary", "conf_counts", "open_questions", "minutes_wall", "cost_usd", "minutes_reported", "denied_tool_calls",
-         "hints_conf", "helpers", "self_check"]
+         "hints_conf", "helpers", "self_check", "tokens"]
     t, last = [], []
     for lane in cfg["lanes"]:
         prev = None
@@ -213,9 +214,11 @@ def swarm_tasks(cfg):
             aft = [f"{it}__{h['id']}" for h in cfg.get("helpers", []) if h.get("when") == "after"]
             t += [node(b, "swarm", H, prompt=f"helper {b}") for b in bef]
             t.append(node(f"{it}__main", "swarm", M, after=bef + ([f"{prev}__main"] if prev else []), prompt=f"research {it}"))
-            t.append(node(f"{it}__check", "swarm", ["pass", "detail"], after=[f"{it}__main"], validated=True))
             t += [node(a, "swarm", H, after=[f"{it}__main"], prompt=f"helper {a}") for a in aft]
-            last += bef + [f"{it}__main", f"{it}__check"] + aft
+            fix = [f"{it}__fix"] if cfg.get("fix") else []   # gate output + contradictions back to the main, once
+            t += [node(x, "swarm", F, after=[f"{it}__main"] + aft, prompt=f"fix {it}") for x in fix]
+            t.append(node(f"{it}__check", "swarm", ["pass", "detail"], after=fix or [f"{it}__main"], validated=True))
+            last += bef + [f"{it}__main", f"{it}__check"] + aft + fix
             prev = it
     t.append(node("swarm_report", "swarm", ["items", "total_cost_usd", "cost_per_item_usd", "main_minutes_median",
                                             "checks_passed", "report"], after=[x for x in last if not x.endswith("__check")]))
