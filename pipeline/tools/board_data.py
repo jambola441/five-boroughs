@@ -45,7 +45,7 @@ def _detail(t):
     if r.get("terrain_sha"): return "manifest verified, sha " + r["terrain_sha"][:8]
     if r.get("classes") or r.get("counts"):
         return f"{r.get('sites', '?')} sites: {r.get('classes') or r['counts']}"[:300]
-    keep = {k: v for k, v in r.items() if k not in ("out", "flags", "gate_lines", "rows", "request", "items")}
+    keep = {k: v for k, v in r.items() if k not in ("out", "flags", "gate_lines", "rows", "request", "items", "writes")}
     if keep and t.get("status") == "verified":   # page steps: their own numbers, no paths
         return ", ".join(f"{k} {v}" for k, v in keep.items())[:300]
     err = re.sub(r"(?:/[^/\s]+){2,}", "<path>", t.get("error") or "")   # scrub any absolute path

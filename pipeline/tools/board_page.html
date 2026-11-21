@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Round Board</title>
+<style>
+:root{color-scheme:light dark;--bg:#f6f5f1;--card:#fff;--ink:#1d1d1b;--mute:#6b6a65;--line:#dedbd2;
+--done:#2f8a4c;--run:#2463c9;--wait:#b7791f;--fail:#c2362f;--unc:#7a4fb5;--pend:#a8a59c}
+@media (prefers-color-scheme:dark){:root{--bg:#151513;--card:#1f1f1c;--ink:#ecebe6;--mute:#a09e96;--line:#34332e;
+--done:#4fb36e;--run:#5b93ef;--wait:#e0a548;--fail:#ec6a5f;--unc:#a985de;--pend:#6f6d66}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);
+display:flex;align-items:center;gap:16px;padding:12px 20px;flex-wrap:wrap}
+h1{font-size:18px;margin:0;font-weight:650}
+.live{display:flex;align-items:center;gap:6px;color:var(--mute);font-size:12px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--done)}
+.dot.stale{background:var(--fail)}
+.tabs{display:flex;gap:4px;margin-left:auto}
+.tabs button{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:5px 12px;border-radius:6px;cursor:pointer;font:inherit}
+.tabs button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.legend{display:flex;gap:12px;font-size:12px;color:var(--mute);flex-wrap:wrap}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px;background:var(--c)}
+main{padding:16px 20px 60px;display:flex;flex-direction:column;gap:14px;max-width:1500px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.top{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+.title{font-weight:650;font-size:15px}
+.sub{color:var(--mute);font-size:12px;margin-top:2px}
+.pill{font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;color:#fff;white-space:nowrap}
+.headline{margin:10px 0 8px;font-size:14px}
+.bar{display:flex;height:6px;border-radius:3px;overflow:hidden;background:var(--line)}
+.bar i{display:block;height:100%}
+.stages{margin-top:12px;display:flex;flex-direction:column}
+.stage{display:grid;grid-template-columns:22px 1fr;gap:10px;position:relative}
+.stage .rail{position:relative;display:flex;justify-content:center}
+.stage .rail::after{content:"";position:absolute;top:22px;bottom:-4px;width:2px;background:var(--rc,var(--line))}
+.stage:last-child .rail::after{display:none}
+.stage .num{width:20px;height:20px;border-radius:50%;margin-top:6px;font-size:11px;font-weight:700;color:#fff;
+display:flex;align-items:center;justify-content:center;background:var(--c);position:relative;z-index:1}
+.chips{display:flex;flex-wrap:wrap;gap:6px;padding:4px 0 10px}
+.node{position:relative;min-width:150px;max-width:340px;border-radius:7px;border:1px solid var(--line);background:var(--card);
+padding:5px 10px 5px 13px;cursor:pointer;font-size:12.5px;line-height:1.3}
+.node::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;border-radius:7px 0 0 7px;background:var(--c)}
+.node .n{font-weight:600}
+.node .s{color:var(--mute);font-size:11.5px}
+.node.sel{outline:2px solid var(--ink)}
+.node.running::before{animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.35}}
+.detail{margin-top:10px;border-top:1px solid var(--line);padding-top:10px;display:none}
+.detail.on{display:block}
+.detail h3{margin:0 0 4px;font-size:14px}
+.kv{display:grid;grid-template-columns:max-content 1fr;gap:3px 12px;font-size:12.5px;margin:8px 0}
+.kv b{color:var(--mute);font-weight:500}
+.kv span{word-break:break-word}
+pre{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px;font-size:11.5px;max-height:260px;overflow:auto;white-space:pre-wrap;margin:6px 0 0}
+.empty{color:var(--mute);padding:40px;text-align:center}
+.old summary{cursor:pointer;color:var(--mute);margin:4px 0}
+</style>
+</head>
+<body>
+<header>
+  <h1>Round Board</h1>
+  <div class="live"><span class="dot" id="dot"></span><span id="ago">connecting…</span></div>
+  <div class="legend">
+    <span style="--c:var(--done)">done</span><span style="--c:var(--run)">running</span>
+    <span style="--c:var(--wait)">waiting on people</span><span style="--c:var(--fail)">failed / stopped</span>
+    <span style="--c:var(--unc)">uncertain</span><span style="--c:var(--pend)">not yet</span>
+  </div>
+  <div class="tabs"><button id="t-active" class="on">Active</button><button id="t-all">All runs</button></div>
+</header>
+<main id="main"><div class="empty">Loading…</div></main>
+<script>
+const C = {done:"var(--done)", running:"var(--run)", waiting:"var(--wait)", failed:"var(--fail)", rejected:"var(--fail)",
+           uncertain:"var(--unc)", pending:"var(--pend)", cancelled:"var(--pend)"};
+const WORD = {done:"done", running:"running", waiting:"waiting", failed:"failed", rejected:"rejected",
+              uncertain:"uncertain", pending:"not yet", cancelled:"cancelled"};
+const PILL = {running:["Running","var(--run)"], waiting:["Waiting on people","var(--wait)"], stopped:["Stopped","var(--fail)"],
+              done:["Finished","var(--done)"], pending:["Not started","var(--pend)"]};
+let data = null, view = "active", sel = {}, lastAt = 0;
+const LOGS = {};
+const el = (t, cls, txt) => { const e = document.createElement(t); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
+
+function ago(ts){ const s = Math.max(0, Date.now()/1000 - ts); if (s < 90) return Math.round(s)+" s ago";
+  if (s < 5400) return Math.round(s/60)+" min ago"; if (s < 129600) return Math.round(s/3600)+" h ago"; return Math.round(s/86400)+" d ago"; }
+
+// collapse runs of h_pass_* into one box, so a 21-pass chain doesn't stretch the page
+function collapse(steps){
+  const pass = steps.filter(s => /^h_pass_\d+$/.test(s.id));
+  if (pass.length < 4) return steps;
+  const ids = new Set(pass.map(s => s.id));
+  const order = ["failed","rejected","uncertain","running","waiting","pending","done"];
+  const st = order.find(o => pass.some(s => s.state === o)) || "done";
+  const nd = pass.filter(s => s.state === "done").length;
+  const cur = pass.find(s => s.state !== "done");
+  const g = {id:"__passes", label:`Passes 1–${pass.length}`, state: st, deps: pass[0].deps,
+             detail: `${nd} of ${pass.length} done` + (cur ? ` · now ${cur.label}: ${cur.note || ""}` : ""),
+             error: cur ? cur.error : "", result: {}, group: pass};
+  const last = pass[pass.length-1].id;
+  const out = [];
+  for (const s of steps){
+    if (ids.has(s.id)) { if (s.id === pass[0].id) out.push(g); continue; }
+    out.push({...s, deps: s.deps.map(d => ids.has(d) ? (d === last ? "__passes" : null) : d).filter(Boolean)});
+  }
+  return out;
+}
+
+function levels(steps){
+  const by = Object.fromEntries(steps.map(s => [s.id, s])), lvl = {};
+  const L = id => { if (lvl[id] != null) return lvl[id]; const s = by[id]; lvl[id] = 0;
+    const ds = s ? s.deps.filter(d => by[d]) : [];
+    lvl[id] = ds.length ? 1 + Math.max(...ds.map(L)) : 0; return lvl[id]; };
+  steps.forEach(s => L(s.id));
+  return lvl;
+}
+
+function card(run){
+  const c = el("div","card");
+  const top = el("div","top"), left = el("div");
+  left.append(el("div","title",run.round));
+  left.append(el("div","sub",`${run.kind} · ${run.mode} · run ${run.name} · updated ${ago(run.updated)}`));
+  const [pt, pc] = PILL[run.status] || PILL.pending;
+  const pill = el("span","pill",pt); pill.style.background = pc;
+  top.append(left, pill); c.append(top);
+  c.append(el("div","headline",run.headline));
+  const bar = el("div","bar");
+  for (const k of ["done","running","waiting","uncertain","failed","rejected","pending"]){
+    const n = run.counts[k] || 0; if (!n) continue;
+    const i = el("i"); i.style.width = (100*n/run.total)+"%"; i.style.background = C[k]; i.title = `${n} ${WORD[k]}`; bar.append(i);
+  }
+  c.append(bar);
+  const steps = collapse(run.steps), lvl = levels(steps);
+  const by = Object.fromEntries(steps.map(s => [s.id, s]));
+  const det = el("div","detail");
+  const st = el("div","stages");
+  const nlev = Math.max(...Object.values(lvl)) + 1;
+  const rank = ["failed","rejected","uncertain","running","waiting","pending","done"];
+  for (let i = 0; i < nlev; i++){
+    const list = steps.filter(s => lvl[s.id] === i);
+    const worst = rank.find(r => list.some(s => s.state === r)) || "pending";
+    const row = el("div","stage"), rail = el("div","rail"), num = el("div","num", String(i+1));
+    num.style.setProperty("--c", C[worst]);
+    if (worst === "done") row.style.setProperty("--rc", "var(--done)");
+    rail.append(num); row.append(rail);
+    const chips = el("div","chips");
+    for (const s of list){
+      const n = el("div","node "+s.state); n.style.setProperty("--c", C[s.state] || C.pending);
+      n.append(el("div","n",s.label));
+      const txt = WORD[s.state] + (s.detail ? " · "+s.detail : (s.error && s.state !== "pending" ? " · "+s.error : ""));
+      n.append(el("div","s", txt.length > 110 ? txt.slice(0,108)+"…" : txt));
+      n.title = s.detail || s.error || "";
+      if (sel[run.name] === s.id) n.classList.add("sel");
+      n.onclick = () => { sel[run.name] = sel[run.name] === s.id ? null : s.id; render(); };
+      chips.append(n);
+    }
+    row.append(chips); st.append(row);
+  }
+  c.append(st);
+  const sid = sel[run.name], s = sid && by[sid];
+  if (s){
+    det.classList.add("on");
+    det.append(el("h3",null,s.label));
+    const kv = el("div","kv");
+    const row = (k, v) => { if (v == null || v === "") return; kv.append(el("b",null,k), el("span",null,String(v))); };
+    row("State", WORD[s.state]); row("Step id", s.id); if (s.attempts) row("Attempts", s.attempts);
+    row("Detail", s.detail); if (s.error && s.error !== s.detail) row("Message", s.error);
+    for (const [k, v] of Object.entries(s.result || {})) if (!["detail"].includes(k)) row(k, v);
+    if (s.group) s.group.forEach(p => row(p.label, `${WORD[p.state]}${p.note ? " · "+p.note.replace("post-pass ","") : ""}`));
+    det.append(kv);
+    if (!s.group){
+      const key = run.name + "/" + s.id;
+      const pre = el("pre",null, LOGS[key] || "loading log…"); det.append(el("div","sub","Last lines of this step's log"), pre);
+      fetch(`/api/log?run=${encodeURIComponent(run.name)}&step=${encodeURIComponent(s.id)}`).then(r => r.json())
+        .then(j => pre.textContent = LOGS[key] = j.text || "(no log for this step)");
+    }
+  }
+  c.append(det);
+  return c;
+}
+
+function render(){
+  const y = window.scrollY, m = document.getElementById("main");
+  m.style.minHeight = m.offsetHeight + "px";   // keep the page height while rebuilding, so the view doesn't jump
+  m.replaceChildren();
+  requestAnimationFrame(() => { window.scrollTo(0, y); m.style.minHeight = ""; });
+  if (!data) return;
+  const now = Date.now()/1000;
+  const isActive = r => r.status === "running" || r.status === "waiting" || (now - r.updated) < 3*3600;
+  const runs = data.runs.filter(r => !r.name.includes("plan-check"));
+  const shown = view === "active" ? runs.filter(isActive) : runs;
+  if (!shown.length){ m.append(el("div","empty","No active runs. Switch to All runs.")); return; }
+  const order = {running:0, waiting:1, stopped:2, pending:3, done:4};
+  shown.sort((a, b) => (order[a.status]-order[b.status]) || ((b.started||0)-(a.started||0))).forEach(r => m.append(card(r)));
+}
+
+async function poll(){
+  try { const r = await fetch("/api/runs", {cache:"no-store"}); data = await r.json(); lastAt = Date.now(); render(); }
+  catch(e) {}
+  setTimeout(poll, 5000);
+}
+setInterval(() => { const s = (Date.now()-lastAt)/1000, d = document.getElementById("dot");
+  document.getElementById("ago").textContent = lastAt ? `live · refreshed ${Math.round(s)} s ago` : "connecting…";
+  d.classList.toggle("stale", !lastAt || s > 20); }, 1000);
+document.getElementById("t-active").onclick = () => { view = "active"; document.getElementById("t-active").classList.add("on"); document.getElementById("t-all").classList.remove("on"); render(); };
+document.getElementById("t-all").onclick = () => { view = "all"; document.getElementById("t-all").classList.add("on"); document.getElementById("t-active").classList.remove("on"); render(); };
+poll();
+</script>
+</body>
+</html>

@@ -4,7 +4,7 @@
 Layer 1, ALLOWLIST: a commit may only add or change these paths, of these types:
   .gitignore, README.md, pipeline/README.md, pipeline/build_round.py,
   pipeline/adapters/*.py, pipeline/prompts/*.md, pipeline/rounds/*.json,
-  pipeline/tools/*.py | *.sh | page_code_hashes.json
+  pipeline/tools/*.py | *.sh | *.html | page_code_hashes.json
 Anything else (data, page code, anything from the team's work folders, other types, files in subfolders) fails.
 Layer 2, CONTENT: no file may match the sha256 of any local page code file (page_code_hashes.json; refresh with
 tools/page_hashes.py), contain a local path, a key/token/secret pattern, or Street View / Google imagery references.
@@ -16,7 +16,7 @@ import fnmatch, hashlib, json, os, re, subprocess, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ALLOW = [".gitignore", "README.md", "pipeline/README.md", "pipeline/build_round.py",
          "pipeline/adapters/*.py", "pipeline/prompts/*.md", "pipeline/rounds/*.json",
-         "pipeline/tools/*.py", "pipeline/tools/*.sh", "pipeline/tools/page_code_hashes.json"]
+         "pipeline/tools/*.py", "pipeline/tools/*.sh", "pipeline/tools/*.html", "pipeline/tools/page_code_hashes.json"]
 SELF = {"pipeline/tools/scan_commit.py", "pipeline/tools/page_code_hashes.json"}   # hold the patterns/hashes
 PATTERNS = [r"/Users/[^/\s]+", r"/private/(?:tmp|var)/", r"(?i)(api[_-]?key|secret|token|passphrase|password)\s*[=:]\s*\S{8,}",
             r"-----BEGIN [A-Z ]*PRIVATE KEY", r"(?i)streetview|maps\.googleapis|lh\d\.googleusercontent"]
