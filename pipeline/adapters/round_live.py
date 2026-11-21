@@ -43,7 +43,8 @@ def t_build(cfg):
     if cfg["mode"] == "existing":
         frozen = os.path.isdir(folder) and not (os.stat(folder).st_mode & stat.S_IWUSR)
         return {"built": "existing", "frozen": str(frozen).lower()}, None
-    if os.path.exists(folder):
+    started = os.path.exists(os.path.join(OUT, "jobs", "terrain_build", "job.json"))   # our own job made it
+    if os.path.exists(folder) and not started:
         return None, f"{folder} already exists; rounds are write-once, pick a new name"
     rc = sh(["zsh", cfg["build_script"]], project(TS), "terrain_build.log")
     if rc != 0:
