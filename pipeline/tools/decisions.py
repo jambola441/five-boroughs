@@ -5,6 +5,13 @@ No decision travels as a message, so two sessions can't act on different copies 
   decisions.py list [--owner OWNER] [--all]     open items (oldest first; --all includes answered / closed)
   decisions.py show ID                          one item with its evidence
   decisions.py answer ID CHOICE --by NAME [--note TEXT]
+  decisions.py next --owner OWNER               take ONE item to work on (refused while you hold an unanswered one)
+  decisions.py release ID --by OWNER            put a taken item back without answering it
+  decisions.py wait --owner OWNER [--batch S] [--remind S]
+                                                the doorbell: run in the background between turns; exits with a count
+                                                (no item text) once new items have settled for --batch seconds
+                                                (default 120), or as a reminder every --remind seconds (default 900)
+                                                while items stay open. Restart it after working the queue.
 
 Owners (POLICY.md): lead · page-coordinator · macmini · terrain-study · page-editor · drive-test · pipeline.
 Kinds:
@@ -92,6 +99,61 @@ def answer(i, choice, by, note=""):
     return it
 
 
+def mine(owner):
+    rows = [it for it in items() if it["status"] == "open" and it["owner"] == owner]
+    return sorted(rows, key=lambda it: (it["priority"], it["raised_at"]))
+
+
+def take(owner):
+    """One item at a time: hand out the most urgent open item, unless the owner already holds one."""
+    rows = mine(owner)
+    held = [it for it in rows if it.get("taken_by") == owner]
+    if held:
+        return held[0], True
+    free = [it for it in rows if not it.get("taken_by")]
+    if not free:
+        return None, False
+    it = free[0]
+    it.update(taken_by=owner, taken_at=time.strftime("%Y-%m-%d %H:%M:%S"))
+    save(it)
+    return it, False
+
+
+def release(i, by):
+    it = load(i)
+    if it.get("taken_by") != by:
+        sys.exit(f"{i} is not held by {by}")
+    it.pop("taken_by"); it.pop("taken_at", None)
+    save(it)
+
+
+def bell(owner, batch=120, remind=900, gap=30, clock=time.time, sleep=time.sleep):
+    """Block until there is something to say, then return the one-line ring. State in _queue/_bell/OWNER.json."""
+    f = os.path.join(Q, "_bell", owner + ".json")
+    st = json.load(open(f)) if os.path.exists(f) else {"rung": [], "last": 0}
+    first_new = None
+    while True:
+        rows = [it for it in mine(owner) if it.get("taken_by") != owner]   # a held item needs no ring
+        ids = {it["id"] for it in rows}
+        new = ids - set(st["rung"])
+        now = clock()
+        msg = None
+        if new:
+            first_new = now if first_new is None else first_new
+            if now - first_new >= batch:
+                msg = f"{len(new)} new"
+        else:
+            first_new = None
+            if ids and now - st["last"] >= remind:
+                msg = "still open"
+        if msg:
+            os.makedirs(os.path.dirname(f), exist_ok=True)
+            json.dump({"rung": sorted(ids), "last": now}, open(f, "w"))
+            return (f"doorbell: {len(ids)} queue item(s) for {owner} ({msg}). Finish what you are doing first; "
+                    f"then take one with: decisions.py next --owner {owner}")
+        sleep(gap)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -99,6 +161,11 @@ def main():
     a = sub.add_parser("show"); a.add_argument("id")
     a = sub.add_parser("answer"); a.add_argument("id"); a.add_argument("choice"); a.add_argument("--by", required=True)
     a.add_argument("--note", default="")
+    a = sub.add_parser("next"); a.add_argument("--owner", required=True)
+    a = sub.add_parser("release"); a.add_argument("id"); a.add_argument("--by", required=True)
+    a = sub.add_parser("wait"); a.add_argument("--owner", required=True)
+    a.add_argument("--batch", type=int, default=120); a.add_argument("--remind", type=int, default=900)
+    a.add_argument("--gap", type=int, default=30)
     x = ap.parse_args()
     if x.cmd == "list":
         rows = [it for it in items() if (x.all or it["status"] == "open") and (not x.owner or it["owner"] == x.owner)]
@@ -108,6 +175,20 @@ def main():
                   + (f"  choices={'/'.join(it['choices'])}" if it["choices"] else ""))
         if not rows:
             print("nothing waiting" + (f" for {x.owner}" if x.owner else ""))
+    elif x.cmd == "next":
+        it, held = take(x.owner)
+        if it is None:
+            print(f"nothing waiting for {x.owner}")
+        elif held:
+            print(f"you already hold {it['id']}: answer it (or release it) before taking another")
+            sys.exit(3)
+        else:
+            print(json.dumps(it, indent=1, ensure_ascii=False))
+    elif x.cmd == "release":
+        release(x.id, x.by)
+        print(f"released {x.id}")
+    elif x.cmd == "wait":
+        print(bell(x.owner, x.batch, x.remind, x.gap), flush=True)
     elif x.cmd == "show":
         print(json.dumps(load(x.id), indent=1, ensure_ascii=False))
     else:
