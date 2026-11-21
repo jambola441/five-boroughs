@@ -149,13 +149,26 @@ def main():
             if rc: return respond(req, "settled", error=f"{s} exited {rc}")
         run(cfg, ["$PY", "-I", "work/p2net/void_diff.py", f"{cfg['prev']}_nocbe", f"{r}_nocbe"], "d_void_diff.log")
         v = jload(f"work/p2net/void_diff_{cfg['prev']}_nocbe_{r}_nocbe.json")
-        return respond(req, output={"pass": str(v["regression_real_m2"] == 0).lower(),
-                                    "detail": f"void regression {v['regression_real_m2']} m2 (new real {v['new_real_m2']} m2)"})
+        reg = v.get("regression_unreasoned_m2", v["regression_real_m2"])   # macmini: unreasoned regression stops
+        return respond(req, output={"pass": str(reg == 0).lower(),
+                                    "detail": f"void regression without a reason {reg} m2 (all {v['regression_real_m2']} m2)"})
     if tid == "d_walls":
         run(cfg, ["$PY", "-I", "work/p2net/wall_near_lane.py", RC, p["prev_nocbe"]], "d_walls.log")
         w = jload(f"work/p2net/wall_near_lane_{r}_nocbe.json")
-        ok = w["on_road_m"] == 0   # new on-road walls vs the previous round; the absolute <= live check is pending
-        return respond(req, output={"pass": str(ok).lower(), "detail": f"new on-road walls {w['on_road_m']} m (must be 0)"})
+        # absolute run against an empty reference (macmini): live's count is the limit; unreasoned rows stop
+        run(cfg, ["$PY", "-I", "work/p2net/wall_near_lane.py", RC, "work/p2net/empty_ref"], "d_walls_abs.log")
+        a = jload(f"work/p2net/wall_near_lane_{r}_nocbe_abs.json")
+        lim = cfg.get("walls_abs_max_triangles", 620)
+        ok = w["on_road_m"] == 0 and a["on_road_triangles"] <= lim and a.get("on_road_unreasoned_triangles", 0) == 0
+        return respond(req, output={"pass": str(ok).lower(),
+                                    "detail": f"new on-road walls {w['on_road_m']} m (must be 0); absolute on-road "
+                                              f"{a['on_road_triangles']} triangles (max {lim}); unreasoned "
+                                              f"{a.get('on_road_unreasoned_triangles', 'n/a')}"})
+    if tid == "d_crossing":
+        run(cfg, ["$PY", "-I", "work/p2net/crossing_check.py", f"work/p2net/final_fdr/{r}_profile_all.json", R], "d_crossing.log")
+        c = jload(f"work/p2net/crossing_check_{r}.json")
+        bad = {k: c.get(k, 0) for k in ("a_unreasoned", "b_unreasoned", "c_unreasoned")}
+        return respond(req, output={"pass": str(not any(bad.values())).lower(), "detail": json.dumps(bad)})
     if tid == "d_listed":
         # Reported, not stopping: run in make-chain order, logs kept in the run folder.
         cmds = [(["$PY", "-I", "work/p2net/underlay_check.py", RC], {"FLOORS": "all", "FLOOR_CLASS": "deck_concrete"}),
