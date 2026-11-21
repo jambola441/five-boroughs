@@ -35,6 +35,8 @@ def main():
 
     if cfg.get("kind") == "page_rule_explore":
         return write_plan(out, cfg, explore_tasks())
+    if cfg.get("kind") == "terrain_round_live":
+        return write_plan(out, cfg, terrain_live_tasks(list(cfg.get("frame_pairs") or {})))
 
     pairs = list(cfg["frame_pairs"])
     hyd = [f"hydrogen_{p}" for p in pairs]
@@ -78,9 +80,39 @@ def explore_tasks():
     ]
 
 
+GATES = ["pins", "a", "b", "c", "ramps", "city", "walls", "flight"]  # the lead's mandatory gates (21 Nov)
+
+
+def terrain_live_tasks(pairs):
+    """Live terrain round: terrain study build -> checks -> accept -> freeze, then drive-test QA where every gate
+    is its own mandatory step; the QA accept and lead gate can't be reached while any gate is failed or waiting."""
+    hyd = [f"hydrogen_{p}" for p in pairs]
+    gates = [f"gate_{g}" for g in GATES]
+    t = [
+        node("t_build", "round_live", ["built", "frozen"], validated=True),
+        node("t_checks", "round_live", ["free_ends", "crest_8pct", "crest_12pct", "join_steps_gt_0p1",
+                                        "junctions_over_2", "junctions_max", "differ", "pass", "fails"],
+             after=["t_build"], validated=True),
+        node("terrain_accept", "round_live", ["rules_pass", "decision", "reasons"], after=["t_checks"], validated=True),
+        node("t_freeze", "round_live", ["terrain_sha", "verified", "matches_expected"], after=["terrain_accept"],
+             validated=True),
+        node("qa_disk", "round_live", ["free_gb"], after=["t_freeze"]),
+        node("qa_round_gate", "round_live", ["gate_log", "gate_dir", "ran"], after=["qa_disk", "t_freeze"]),
+    ] + [node(g, "round_live", ["pass", "detail"], after=["qa_round_gate"], validated=True) for g in gates] + [
+        node("frames_ready", "round_live", ["pairs"], after=["t_freeze"]),
+    ] + [node(h, "qa", ["verdict", "fixed", "new_in_after", "seconds"], after=["frames_ready"], validated=True)
+         for h in hyd] + [
+        node("qa_accept", "round_live", ["rules_pass", "decision", "reasons"], after=gates + hyd + ["frames_ready"],
+             validated=True),
+        node("lead_gate", "lead", ["approved_by", "decision", "class_rows"], after=["qa_accept"]),
+        node("register_update", "lead", ["row"], after=["lead_gate"]),
+    ]
+    return t
+
+
 def write_plan(out, cfg, tasks):
     providers = {p: {"command": [PY, "-I", os.path.join(HERE, "adapters", p + ".py")], "env": ENV}
-                 for p in ("terrain", "qa", "lead", "explore")}
+                 for p in ("terrain", "qa", "lead", "explore", "round_live")}
     plan = {"api_version": "swarm/v1", "name": "round: " + cfg["round"], "max_tasks": len(tasks) + 2,
             "providers": providers, "tasks": tasks}
     json.dump(plan, open(os.path.join(out, "plan.json"), "w"), indent=1)

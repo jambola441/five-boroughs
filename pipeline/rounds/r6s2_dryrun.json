@@ -1,0 +1,29 @@
+{
+ "round": "v1c_r6s2",
+ "prev": "v1c_r6s2 (dry run compares the round with itself)",
+ "kind": "terrain_round_live",
+ "mode": "existing",
+ "expected_sha": "baa4c7a9d8938b6d249d9c9fbae868c978fa95bbe6fba97609fb1692ba471ad7",
+ "prev_terrain": {
+  "free_ends": 180,
+  "junctions_over_2": 12,
+  "junctions_max": 2.86,
+  "crest_8pct": 23,
+  "crest_12pct": 8,
+  "join_steps_gt_0p1": 1
+ },
+ "planned_diff": {
+  "tiles": 0,
+  "water": 0,
+  "skirts": 0,
+  "decks": 17
+ },
+ "prev_qa": {
+  "b_underM": 37010,
+  "b_linesUnder": 592
+ },
+ "rules": {},
+ "frame_pairs": {},
+ "coordinator": "agy:gemini-4-hydrogen-high",
+ "note": "Dry run on the frozen round: proves every step and parser; decides nothing."
+}
