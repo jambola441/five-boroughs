@@ -123,13 +123,18 @@ def highway_tasks(cfg):
     passes = [node(f"h_pass_{i:02d}", "highway", ["pass", "step"], after=[f"h_pass_{i - 1:02d}" if i else "h_assemble"],
                    validated=True, prompt=f"post-pass {s}") for i, s in enumerate(cfg["passes"])]
     last = f"h_pass_{len(cfg['passes']) - 1:02d}"
+    after_pm = [node(f"h_after_{i:02d}", "highway", ["pass", "step"],
+                     after=[f"h_after_{i - 1:02d}" if i else "h_part_move"], validated=True, prompt=f"after part_move: {s}")
+                for i, s in enumerate(cfg.get("after_part_move", []))]
     stops = ["d_floor_fix_guard", "d_tile_inventory", "d_no_surface", "d_unsupported", "d_underlay", "d_void", "d_walls", "d_columns"]
     if cfg.get("crossing_check"):   # macmini switches this on once its r14u rules are in
         stops.append("d_crossing")
     t = [node("h_guard", "highway", ["pass", "writes", "free_gb"], validated=True),
          node("h_assemble", "highway", ["pass"], after=["h_guard"], validated=True)] + passes + [
          node("h_part_move", "highway", ["pass"], after=[last], validated=True),
-         node("h_cbe_copy", "highway", ["pass"], after=["h_part_move"], validated=True)] + [
+         ] + after_pm + [
+         node("h_cbe_copy", "highway", ["pass"], after=[after_pm[-1]["id"] if after_pm else "h_part_move"],
+              validated=True)] + [
          node(s, "highway", ["pass", "detail"], after=["h_cbe_copy"], validated=True) for s in stops] + [
          node("d_listed", "highway", ["pass", "detail"], after=["h_cbe_copy"]),
          node("highway_accept", "round_live", ["rules_pass", "decision", "reasons"], after=stops + ["d_listed"],

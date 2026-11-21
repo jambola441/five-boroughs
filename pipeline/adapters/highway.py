@@ -106,6 +106,12 @@ def main():
         rc = run(cfg, ["$PY", "-I", "work/p2net/part_move.py", R], "h_part_move.log", env)
         return respond(req, output={"pass": "true"}) if rc == 0 else respond(req, "settled", error=f"part_move exited {rc}")
 
+    if tid.startswith("h_after_"):   # passes after part_move, before the CBE copy (r14u: drive_band_clear)
+        st = cfg["after_part_move"][int(tid[len("h_after_"):])]
+        rc = run(cfg, ["$PY", "-I", f"work/p2net/{st}.py", R], f"{tid}_{st}.log", cfg["pass_env"])
+        return respond(req, output={"pass": str(rc == 0).lower(), "step": st}) if rc == 0 else \
+            respond(req, "settled", error=f"{st} exited {rc}")
+
     if tid == "h_cbe_copy":
         for t in CBE:
             for f in (f"tile_{t}_above.glb", f"lanes_{t}.json"):

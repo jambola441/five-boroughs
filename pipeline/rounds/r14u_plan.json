@@ -3,7 +3,7 @@
  "prev": "r14t",
  "kind": "highway_round",
  "mode": "plan_only",
- "note": "Plan-only check: the guard runs (read-only); every other step stops before executing. prev r14t frozen (macmini, 2026-11-21); 21 passes as make_r14t.sh (underlay_clip after edge_seal).",
+ "note": "Plan-only check: the guard runs (read-only); every other step stops before executing. prev r14t frozen (macmini, 2026-11-21); 21 passes as make_r14t.sh (underlay_clip after edge_seal). macmini 21 Nov: drive_band_clear after part_move, P2_R14U=1 (pit_walls headwall-top caps).",
  "p2_terv": "v1c_r6k",
  "input_build": "work/p2net/b_fdr_r14q",
  "post_only": true,
@@ -48,7 +48,8 @@
   "P2_R14T": "1",
   "SKIRT_ALL": "1",
   "SKIRT_UPTOP": "1",
-  "RING_BAND": "0.25"
+  "RING_BAND": "0.25",
+  "P2_R14U": "1"
  },
  "part_move_up": "336534284",
  "listed_loop": [
@@ -71,5 +72,8 @@
   "grade_check",
   "lane_deck_drape"
  ],
- "coordinator": "agy:gemini-4-hydrogen-high"
+ "coordinator": "agy:gemini-4-hydrogen-high",
+ "after_part_move": [
+  "drive_band_clear"
+ ]
 }
