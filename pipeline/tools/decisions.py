@@ -63,7 +63,7 @@ def items():
     return [json.load(open(os.path.join(Q, f))) for f in sorted(os.listdir(Q)) if f.endswith(".json")]
 
 
-def raise_item(run, step, kind, owner, question, evidence, run_dir, priority=2):
+def raise_item(run, step, kind, owner, question, evidence, run_dir, priority=2, choices=None):
     """Raise once per (run, step, kind). A changed round.json makes an unanswered item stale and raises a new one."""
     v = version(run_dir)
     base = f"{run}--{step}--{kind}"
@@ -77,7 +77,7 @@ def raise_item(run, step, kind, owner, question, evidence, run_dir, priority=2):
     if os.path.exists(_p(i)):
         return None
     save({"id": i, "key": base, "run": run, "step": step, "kind": kind, "owner": owner, "question": question,
-          "choices": CHOICES[kind], "evidence": evidence, "priority": priority, "version": v, "status": "open",
+          "choices": choices or CHOICES[kind], "evidence": evidence, "priority": priority, "version": v, "status": "open",
           "raised_at": time.strftime("%Y-%m-%d %H:%M:%S")})
     return i
 

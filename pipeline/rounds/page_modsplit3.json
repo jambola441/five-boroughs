@@ -1,0 +1,475 @@
+{
+ "round": "Page round 4c (last modsplit round): modelled-chain split only where the chain is modelled today, freeing city-street-class lines only (MODSPLIT=3) on B′ + reslocal=1, r6t2 + r14s",
+ "kind": "page_round",
+ "mode": "live",
+ "accept": "explore",
+ "status": "HELD by the lead 2026-11-21: do not run. modsplit2 and modsplit3 retired as exploration, not adopted (switches stay in the code, off). Kept on file as the record of the design; see lead_terms.a_correction.answer",
+ "prev": "page-modsplit2-1",
+ "idea": "MODSPLIT=2 freed every own-unmodelled line inside a chain modelled today. Every modsplit2 defect (the 3 debts: Gowanus FAIL, 8.6 m edge sliver, LIE EB 2.19 m step; and Hydrogen's m02 raise slab and m06 Washington Br connector hole) came from a freed motorway / trunk (+_link) or unclassed terrain-study 'ext' line, which the highway layer already draws. MODSPLIT=3 = MODSPLIT=2, but a line inside a modelled chain is freed only when its own OSM highway class is a city-street class (residential, tertiary, secondary, primary, unclassified, service, living_street, pedestrian, + _link). A class rule over every deck line; no line or site is named. MODSPLIT=0/1/2 are unchanged (byte-identical citywide, census + FP log).",
+ "question": "Does MODSPLIT=3 keep the E 174 St pay-back (0 m) and the deck gap below base while every modsplit2 defect site returns to base (the 3 debts, m02, m04, m06), with Hydrogen no worse at all 11 poses and the new lift guards clean?",
+ "pays_back": [
+  {
+   "round": "r6t2",
+   "debt": "East 174th Street R2 deck line (5824.8,-8540.7)-(5847.9,-8528.2): page draws 18 of 28 m under it, max gap 2.08 m",
+   "owner": "page: modelled-chain test on joined chains"
+  },
+  {
+   "round": "page-modsplit2-1",
+   "debt": "(1) Gowanus Expwy FAIL (-2172,12594); (2) 8.6 m edge sliver spike (-3230.1,13948) on claim (-3147.6,13838); (3) LIE EB entrance, Greenpoint Ave, 2.19 m step (5152,3873)",
+   "owner": "page editor",
+   "how": "the class rule does not free the motorway / trunk / ext lines these sites ride on; their tiles are byte-identical to base in the dry run. Debt (3) is not moved to the 103-site rule-2 neighbour fix: the step never forms."
+  },
+  {
+   "round": "page-modsplit2-1 lead gate",
+   "debt": "Hydrogen m02 (-3012,13664) raise slab / z-fighting; m06 Washington Br connector (4560,-8560) missing columns + see-through hole; m04 LIE cluster (6182,4406)",
+   "owner": "page editor",
+   "how": "m02 / m06: as above (tiles byte-identical to base). m04: capture artefact per the page editor's re-shoot (fresh A == B, tile unchanged); the G0 capture check and Hydrogen at the m04 pose must confirm it."
+  }
+ ],
+ "dry_run": {
+  "by": "page editor, 2026-11-21, scratch copies, r6t2 + r14s, base rl1b, MODSPLIT=3 (pe:data/census/dry_ms3/PROPOSAL.md)",
+  "drape_tiles_written": "2 (x11_z-18 E 174 St, x9_z-17 Washington Br); modsplit2 wrote 9",
+  "newlist": "0 new / 1 gone (lost at E 174 St 5841.5,-8534.9)",
+  "deck_under": "underM 8,581 (base 8,648, modsplit2 8,351); E 174 St 0 m; #6 0 m (checked by the coordinator on the dry deck_under rows)",
+  "c_ii_m": "789 (base 800)",
+  "guard_1_2_17": "newly riding 5: PASS 4 / FAIL 0 / D 0 / NOLIFT 1, spikes 0, pass_c1_only 0; 17,2 identical",
+  "tents": "382 / 547.9 m2 flat; tent_diff 0 new",
+  "overflow_polys": "3,011 (base 3,007, modsplit2 3,025)",
+  "car_steps_2m": "2,759 (= base)",
+  "modelled": "CORRECTED by the page editor with diag/modelled_census_s3.py --split3 (mirrors the page's MODSPLIT=3 join): frees 1 line / 26 m (East 174th Street, residential). Inherited stays 21 lines / 5,172 m: city 3 / 348 (Centre St 17 m, a Brooklyn Br secondary piece 113 m, an unnamed service bridge 217 m; they reach the modelled part only through motorway / trunk lines, which stay joined), motorway_trunk 14 / 4,572, ext 4 / 253. Plain join: 22 / 5,199 (city 4 / 374). The earlier '4 lines / 374 m freed' came from class tags alone.",
+  "lift_guards": "G1 vacate 1 polygon (E 174 St roadbed r52 at 5842.3,-8545.6: the CBE NB entrance ramp from Jerome Ave under the E 174 St deck, lifted with the deck, 19/24 sampled raised vertices have LiDAR at the base height); G2 defect step cells 53, all high-only (46 x11_z-18, 7 x9_z-17), low-only 0; on modsplit2 G1 5 / G2 998, flagging m02 and m06",
+  "expected": "every gate passes except, without the lead's terms, g_modelled (18 lines stay inherited by design), g_vacate (r52) and g_step (53 high-only cells). Those are exactly what lead_terms asks."
+ },
+ "budget": {
+  "new_step_places": 0,
+  "marginal_step_max_m": 0,
+  "deck_under_m": 0,
+  "ramps_new": 0,
+  "tents_n": 0,
+  "tents_m2": 0,
+  "tents_new": 0,
+  "c_ii_m": 0,
+  "visible_drivable_new": 0,
+  "step_low_only": 0,
+  "step_high_only": 53
+ },
+ "budget_note": "the lead's page_modsplit budget, carried over unchanged (set 2026-11-21: all zeros, visible_drivable_new 0). If the round fails only on a few new places, the coordinator brings the lead the list with locations and LiDAR classes. LiDAR guard: the lead's 2026-11-21 rule: classes 1, 2, 17 count; a PASS resting only on class-1 returns also needs the layer continuous along the deck line (same layer within 1 m at ±2.5 and ±5 m, >= 8 returns each); the gate judges the 1,2,17 set and reports the 17,2 counts and pass_c1_only. Last modsplit round: no debt allowances carried from page-modsplit2-1 (its 3 debts must clear). step_high_only 53, tiles x11_z-18 / x9_z-17 only (lead term c, approved). g_vacate allows exactly r52, under the lead's Hydrogen condition.",
+ "deck_zero_pieces": [
+  {
+   "name": "Cross Bronx Expressway",
+   "x": 8445.6,
+   "z": -7785.4,
+   "radius_m": 15,
+   "why": "the #6 piece, regression: must stay 0 m under"
+  },
+  {
+   "name": "East 174th Street",
+   "x": 5836.4,
+   "z": -8534.5,
+   "radius_m": 15,
+   "why": "the r6t2 debt line: must show 0 m under (was 18 m; modsplit-1 0 m)"
+  }
+ ],
+ "debt": [],
+ "target_fixed": [],
+ "steps": [
+  {
+   "id": "p_drape_base",
+   "tool": "drape",
+   "tag": "v1c_r6t2_r14s_lr3_rl1b",
+   "use_existing": true,
+   "existing": "work/drive_audit/page_drape/v1c_r6t2_r14s_lr3_rl1b",
+   "note": "page-modsplit-1's base drape (MODSPLIT off: byte-identical in the modsplit2 and modsplit3 files)"
+  },
+  {
+   "id": "p_drape",
+   "tool": "drape",
+   "tag": "v1c_r6t2_r14s_lr3_rl1ms3",
+   "base": "v1c_r6t2_r14s_lr3_rl1b",
+   "after": [
+    "p_drape_base"
+   ],
+   "LIFTRULE": 3,
+   "RESLOCAL": 1,
+   "MODSPLIT": 3,
+   "extra_switches": [
+    "MODSPLIT"
+   ],
+   "TERV": "v1c_r6t2",
+   "LANES": "highways/work/p2net/final_fdr/r14s"
+  },
+  {
+   "id": "p_lift_base",
+   "tool": "lift_gate",
+   "tag": "v1c_r6t2_r14s_lr3_rl1b",
+   "use_existing": true,
+   "existing": "work/drive_audit/deckends/lift_pd_v1c_r6t2_r14s_lr3_rl1b",
+   "TERV": "v1c_r6t2",
+   "LANES": "highways/work/p2net/final_fdr/r14s"
+  },
+  {
+   "id": "p_lift_gate",
+   "tool": "lift_gate",
+   "tag": "v1c_r6t2_r14s_lr3_rl1ms3",
+   "drape": "step:p_drape",
+   "after": [
+    "p_drape"
+   ],
+   "TERV": "v1c_r6t2",
+   "LANES": "highways/work/p2net/final_fdr/r14s"
+  },
+  {
+   "id": "p_newlist",
+   "tool": "newlist",
+   "base_flags": "work/drive_audit/deckends/lift_pd_v1c_r6t2_r14s_lr3_rl1b/city/flags_drape.json",
+   "variant_flags": "step:p_lift_gate",
+   "after": [
+    "p_lift_gate",
+    "p_lift_base"
+   ]
+  },
+  {
+   "id": "p_deck_base",
+   "tool": "deck_under",
+   "use_existing": true,
+   "existing": "runs:page-modsplit-1/p_deck_base.json",
+   "TERV": "v1c_r6t2"
+  },
+  {
+   "id": "p_deck_under",
+   "tool": "deck_under",
+   "drape": "step:p_drape",
+   "after": [
+    "p_drape"
+   ],
+   "TERV": "v1c_r6t2"
+  },
+  {
+   "id": "p_ramps_base",
+   "tool": "ramps",
+   "tag": "v1c_r6t2_r14s_lr3_rl1b",
+   "use_existing": true,
+   "existing": "work/drive_audit/deckends/ramps_v1c_r6t2_r14s_lr3_rl1b",
+   "TERV": "v1c_r6t2"
+  },
+  {
+   "id": "p_ramps",
+   "tool": "ramps",
+   "tag": "v1c_r6t2_r14s_lr3_rl1ms3",
+   "TERV": "v1c_r6t2",
+   "after": [
+    "p_drape"
+   ]
+  },
+  {
+   "id": "p_modelled_off",
+   "tool": "modelled_census",
+   "use_existing": true,
+   "existing": "runs:page-modsplit-1/p_modelled_off.json",
+   "terrain": "work/terrain_study/p1/terrain/v1c_r6t2",
+   "LANES": "highways/work/p2net/final_fdr/r14s",
+   "split": false
+  },
+  {
+   "id": "p_modelled_on",
+   "tool": "modelled_census",
+   "terrain": "work/terrain_study/p1/terrain/v1c_r6t2",
+   "LANES": "highways/work/p2net/final_fdr/r14s",
+   "split": 3,
+   "note": "static count of what MODSPLIT=3 frees: pe:diag/modelled_census_s3.py <terrain> <lanes> <out> --split3 (the original diag/modelled_census.py is unchanged and still pinned). Output adds inherited_by_class {city, motorway_trunk, ext}, freed, freed_rows",
+   "script": "pe:diag/modelled_census_s3.py"
+  },
+  {
+   "id": "p_census",
+   "tool": "census_fp",
+   "LIFTRULE": 3,
+   "RESLOCAL": 1,
+   "MODSPLIT": 3,
+   "extra_switches": [
+    "MODSPLIT"
+   ],
+   "after": [
+    "p_newlist"
+   ],
+   "TERV": "v1c_r6t2",
+   "LANES": "highways/work/p2net/final_fdr/r14s"
+  },
+  {
+   "id": "p_census_base",
+   "tool": "census_fp",
+   "use_existing": true,
+   "existing": "runs:page-modsplit-1/p_census_base.json",
+   "note": "its ride log p_census_base_fp.jsonl sits beside it",
+   "LIFTRULE": 3,
+   "RESLOCAL": 1,
+   "TERV": "v1c_r6t2",
+   "LANES": "highways/work/p2net/final_fdr/r14s"
+  },
+  {
+   "id": "p_fp_new",
+   "tool": "fp_new",
+   "census_off": "p_census_base",
+   "census_on": "p_census",
+   "after": [
+    "p_census",
+    "p_census_base"
+   ]
+  },
+  {
+   "id": "p_new_lidar",
+   "tool": "kept_lidar_dual",
+   "list": "step:p_fp_new",
+   "drape": "step:p_drape",
+   "base_drape": "work/drive_audit/page_drape/v1c_r6t2_r14s_lr3_rl1b",
+   "TERV": "v1c_r6t2",
+   "after": [
+    "p_fp_new",
+    "p_drape"
+   ]
+  },
+  {
+   "id": "p_lidar",
+   "tool": "lidar",
+   "list": "step:p_newlist",
+   "drape": "step:p_drape",
+   "after": [
+    "p_newlist"
+   ]
+  },
+  {
+   "id": "p_trace",
+   "tool": "trace",
+   "list": "step:p_newlist",
+   "LIFTRULE": 3,
+   "RESLOCAL": 1,
+   "MODSPLIT": 3,
+   "extra_switches": [
+    "MODSPLIT"
+   ],
+   "after": [
+    "p_newlist"
+   ],
+   "TERV": "v1c_r6t2",
+   "LANES": "highways/work/p2net/final_fdr/r14s"
+  },
+  {
+   "id": "p_tent_diff",
+   "tool": "tent_diff",
+   "drape": "step:p_drape",
+   "base_drape": "work/drive_audit/page_drape/v1c_r6t2_r14s_lr3_rl1b",
+   "after": [
+    "p_drape"
+   ]
+  },
+  {
+   "id": "p_lift_guards",
+   "tool": "lift_guards",
+   "drape": "step:p_drape",
+   "base_drape": "work/drive_audit/page_drape/v1c_r6t2_r14s_lr3_rl1b",
+   "LANES": "highways/work/p2net/final_fdr/r14s",
+   "after": [
+    "p_drape"
+   ],
+   "note": "pe:guards/lift_guards.py <variant drape> <base drape> <lanes> <out.json>; judges only tiles the variant wrote. Output total.vacate_polys, total.step_cells {two-level, high-only, low-only, none}, vacate[] {tile, poly, c}, steps[] {tile, x, z, cls}"
+  }
+ ],
+ "gates": [
+  {
+   "id": "g_modelled",
+   "check": "modelled_split",
+   "step": "p_modelled_on",
+   "base_step": "p_modelled_off",
+   "also": [
+    "p_fp_new"
+   ],
+   "rule": "switch on (--split3): inherited city-street lines <= 3 / 348 m and only Centre St (osm 1396464324...), the Brooklyn Br secondary piece (osm 46116316...) and the service bridge (osm 546613474); inherited total <= 21 lines / 5,172 m; freed must include East 174th Street (osm 5698008). Motorway / trunk / ext inherited lines are reported. [PENDING the lead: lead_terms.a_correction; if declined, inherited city must be 0, which this rule fails]"
+  },
+  {
+   "id": "g_newlist",
+   "check": "newlist",
+   "step": "p_newlist",
+   "classes": [
+    "step2",
+    "lost"
+   ],
+   "min_m": 0
+  },
+  {
+   "id": "g_deck_under",
+   "check": "deck_under",
+   "step": "p_deck_under",
+   "base_step": "p_deck_base",
+   "rule": "underM must not rise vs base, and every deck_zero_pieces entry must show 0 m under"
+  },
+  {
+   "id": "g_ramps",
+   "check": "ramps",
+   "step": "p_ramps",
+   "base_step": "p_ramps_base"
+  },
+  {
+   "id": "g_census",
+   "check": "census",
+   "step": "p_census",
+   "base_step": "p_census_base"
+  },
+  {
+   "id": "g_lift",
+   "check": "lift",
+   "step": "p_lift_gate",
+   "base_step": "p_lift_base",
+   "fields": [
+    "c_ii_m",
+    "visible_drivable_new"
+   ]
+  },
+  {
+   "id": "g_new_lidar",
+   "check": "kept_lidar",
+   "step": "p_new_lidar",
+   "rule": "the kept_lidar check unchanged (FAIL needs a reason, off-LiDAR sliver spikes fail, unlisted slivers fail closed, D cap 20 %, option c), judged on the 1,2,17 set's rows (the lead's class-1 rule is applied inside the guard); the detail also reports counts_17_2 and pass_c1_only"
+  },
+  {
+   "id": "g_tent_diff",
+   "check": "tent_diff",
+   "step": "p_tent_diff"
+  },
+  {
+   "id": "g_vacate",
+   "check": "lift_vacate",
+   "step": "p_lift_guards",
+   "rule": "G1: vacate polygons = 0, except exactly the debt entry r52 (5842.3,-8545.6, within 5 m), which the lead allows only under its Hydrogen condition (gate g_r52_ramp); detail lists every vacate polygon with tile, poly id and c"
+  },
+  {
+   "id": "g_step",
+   "check": "lift_step",
+   "step": "p_lift_guards",
+   "rule": "G2: low-only cells 0 (budget step_low_only); high-only cells <= 53 (budget step_high_only, lead term c) and only in tiles x11_z-18 and x9_z-17; 'none' cells reported; two-level allowed; detail lists counts per tile and class"
+  },
+  {
+   "id": "g_capture",
+   "check": "frames_capture",
+   "step": "frames",
+   "rule": "G0, a stopping check before Hydrogen: for every pair, A vs B pixel difference on tiles the variant did not write < 0.05 %; else the page editor re-shoots. Read from the frames folder's guards_frames.json"
+  },
+  {
+   "id": "g_structure",
+   "check": "frames_structure",
+   "step": "frames",
+   "rule": "G3, a stopping check before Hydrogen: per pose, scene triangle and instance counts A vs B; 0 structure pieces lost. Read from guards_frames.json"
+  },
+  {
+   "id": "g_r52_ramp",
+   "check": "hydrogen_pose",
+   "step": "hydrogen",
+   "pose": "m11_e174_ramp_drv",
+   "rule": "the lead's r52 condition: Hydrogen on m11_e174_ramp_drv must answer yes to \"can a car still take the ramp: drawn, continuous, no step or hole?\"; otherwise the round fails (the lead gate would reject it: no debt)",
+   "question": "can a car still take the ramp: drawn, continuous, no step or hole?"
+  },
+  {
+   "id": "g_hydrogen_none_worse",
+   "check": "hydrogen_none_worse",
+   "step": "hydrogen",
+   "rule": "the lead's condition for the last modsplit round: no pose judged worse than base; m06 must show the street and the columns back"
+  }
+ ],
+ "frames": {
+  "folder": "pe:frames/graph/page_modsplit3",
+  "after": [
+   "p_newlist",
+   "p_fp_new",
+   "p_lift_guards"
+  ],
+  "panels": [
+   "B′ + reslocal=1 (r6t2)",
+   "B′ + reslocal=1 + modsplit=3"
+  ],
+  "variants": [
+   "LIFTRULE=3 RESLOCAL=1",
+   "LIFTRULE=3 RESLOCAL=1 MODSPLIT=3 (?modsplit=3)"
+  ],
+  "poses": [
+   "m00 East 174th Street R2 deck line (5836, -8534): r6t2 pay-back, must stay claimed; also shows the r52 CBE NB entrance ramp (5842.3, -8545.6)",
+   "m01 cluster 1, Belt Pkwy / 3 Ave (-3470, 14193)",
+   "m02 the modsplit2 +8.3 m raise (-3012, 13664): must be back to base",
+   "m03 debt (1) Gowanus FAIL site (-2172, 12594): must be back to base",
+   "m04 cluster 2, LIE (6182, 4406): G0 must show no capture difference",
+   "m05 cluster 3, Astoria Blvd N (7736, 185)",
+   "m06 Washington Br connector over Undercliff Ave (4560, -8560): the street and the columns must be back, no hole (lead)",
+   "m07 cluster 5, unnamed bridge (-1799, 6260)",
+   "m08 Cross Bronx #6 piece (8445.6, -7785.4): regression",
+   "m09 debt (2) edge sliver (-3230.1, 13948): must be back to base",
+   "m10 debt (3) LIE EB entrance, Greenpoint Ave (5152, 3873): must be back to base",
+   "m11_e174_ramp_drv: DRIVER VIEW up the CBE NB entrance ramp r52 from Jerome Ave, eye (5838.4, 9.4, -8548.4), 1.6 m over the ramp, looking to (5882.8, 9.4, -8548.4). Ramp 46 m, drawn 7.8-8.4 m in base, 7.8-15.6 m under MODSPLIT=3 (dry). Hydrogen: \"can a car still take the ramp: drawn, continuous, no step or hole?\"",
+   "m12_washbr_43m: Washington Br written tile x9_z-17, the newly riding line (4915,-8494.7)-(4934.25,-8480.45) on the 43 m deck and its 7 high-only step cells"
+  ],
+  "note": "r6t2 terrain; poses pe:data/census/shots_MS3.js (page_modsplit2's 11 + m11 ramp driver view + m12 Washington Br 43 m deck)",
+  "required_evidence": "guards_frames.json in the frames folder, machine-readable, before READY: per pair {pose, g0_pixel_diff_pct on unwritten tiles, g3_tris_a, g3_tris_b, g3_inst_a, g3_inst_b, g3_lost}; NOTES per pair as before. Hydrogen judges every pose against base (none worse) and answers the lead's ramp question for m11_e174_ramp_drv.",
+  "poses_file": "pe:data/census/shots_MS3.js"
+ },
+ "expires": "2026-11-28",
+ "max_rounds": 3,
+ "success_measure": "the 3 modsplit2 debts and m02 / m04 / m06 back to base, E 174 St 0 m, underM below base, no lift-guard defect beyond lead_terms, Hydrogen no worse at all 13 poses. Exploration only: the switch stays off by default; not a ship candidate. r52 allowed only if Hydrogen says a car can still take the ramp.",
+ "kept_reasons": "pe:data/census/modsplit_kept_reasons.json",
+ "require_sha": {
+  "pe:phaseb/setd_core.mjs": "1591e7772ba54f75b3b73189fbfe5418168a1a53f2fe86491bf77bdf288fe989",
+  "pe:phaseb/bridge_own_census.mjs": "1d66423d4adb5ef4c4d9b4518d7a5c4a81bc761ad0b18cd251697fb9dc965dbf",
+  "pe:phaseb/fb_env_preload.mjs": "6f15df029fab667c532b6c5195f07e30c698129201f56afa07020996c06d9730",
+  "pe:phaseb/build.mjs": "bb5796c0b5a249f809ee80d69768394a2c3f300144e3881c2be4cb54cac92898",
+  "pe:diag/modelled_census.py": "PENDING (page editor: class-rule split mode)",
+  "pe:diag/fp_events.mjs": "1f74874bbd24522aad05d7f8b17891a9174c58c8d725dff5484e717edd2ecfbc",
+  "pe:diag/fp_new.py": "33f65e37295ab8e21cee8ed1ec69cdafbfc3e38958ad8a4af75d6b4b8c72f6a8",
+  "pe:reach/lidar_kept_check4.py": "fbbcc2a373e98452f067afe57717f62573c3cfa19637f9055bceecc169da6001",
+  "pe:reach/lidar_kept_dual.py": "3c39ccdd126628bea383dd750fcc0415a6a358102ca40656124fd5d4b7256816",
+  "pe:guards/lift_guards.py": "27f1e09f203224d8f880104a2152933a4f62702159aaa6fbda74a1bfb28a0822",
+  "pe:diag/modelled_census_s3.py": "b7d7e8a712c6c5524eef7d56dcb50e0cb3dd1e7e25468bc6eeae3ea6f65fd5ae"
+ },
+ "proposal": {
+  "from": "page coordinator, 2026-11-21, designed with the page editor",
+  "variants": "ONE round, not variants: the page editor's single class rule covers all six sites, so V-all and V-debts would be the same code with the same switches; a V-new split can't separate m02 from debt (2) (same Belt Pkwy chain -2977,13634 -> -4047,14056).",
+  "needs_adapter": [
+   "tool lift_guards: python -I pe:guards/lift_guards.py <variant drape> <base drape> <LANES> <out.json>; return vacate_polys, step_cells per class, and the out path",
+   "gate lift_vacate: total.vacate_polys after removing vacate[] rows within 5 m of a debt entry with check 'lift_vacate'; must be 0",
+   "gate lift_step: step_cells low-only <= budget step_low_only; high-only <= budget step_high_only and every high-only row's tile in the round's allowed tiles (lead_terms c); report per tile and class",
+   "modelled_census split 3: run pe:diag/modelled_census_s3.py (step field 'script') with --split3; expose inherited_by_class and freed_rows; gate modelled_split with split 3 judges the rule in g_modelled.rule (named city lines allowed, totals capped, E 174 St freed)",
+   "pe:guards/ is a new page-code folder: add it to code_pin's page trees and the commit scanner's page-code hashes (as reach/ was)",
+   "gates frames_capture (G0) and frames_structure (G3): stopping checks between frames READY and Hydrogen, read <frames folder>/guards_frames.json (keys in frames.required_evidence); a failed G0 goes back to the page editor as a frames re-shoot, a failed G3 stops the round",
+   "gate hydrogen_pose: the Hydrogen review of one pose (m11_e174_ramp_drv) must answer yes to the lead's question (gate field 'question'); the Hydrogen prompt for that pose must ask it verbatim",
+   "gate hydrogen_none_worse: no pose judged worse than base (today this is the lead's reading at the lead gate; make it a gate)",
+   "a debt entry with conditional true is honoured by g_vacate only while g_r52_ramp passes; if g_r52_ramp fails, the round fails, with no debt verdict offered"
+  ],
+  "before_start": [
+   "DONE 2026-11-21: the lead approved (lead_terms.answer); no further lead OK until the lead gate",
+   "the lead's answer to lead_terms.a_correction (g_modelled expectation)",
+   "the page editor swaps the 3 files in pe:staged/modsplit3/ into pe:phaseb (fb_env_preload.mjs unchanged) once no phaseb/diag/reach/guards process runs; backups and before/after hashes in five-boroughs-runs/_swaps/",
+   "DONE: pe:diag/modelled_census_s3.py sha256 in require_sha; diag/modelled_census.py unchanged, so the reused base outputs hold",
+   "base outputs reused from page-modsplit-1 were made with MODSPLIT off; the page editor states off is byte-identical in the modsplit3 files"
+  ]
+ },
+ "lead_terms": {
+  "asked": "page coordinator to the lead, 2026-11-21, one question: run the last modsplit round as MODSPLIT=3 on terms (a)-(c)?",
+  "a_g_modelled_scope": "g_modelled counts only city-street-class lines (must be 0 inherited); the 18 motorway / trunk / ext lines / 4,825 m are reported, not gated, and stay open on register row 23 for a follow-up rule (vacate-safe freeing of non-street decks)",
+  "b_vacate_debt": "E 174 St roadbed r52 (5842.3,-8545.6) on the debt list for g_vacate, owner page editor, pay-back in the row 23 follow-up round (needs a polygon-street test the page lacks); any other vacate polygon fails",
+  "c_step_budget": "g_step: low-only cells 0; high-only cells <= 53 and only in tiles x11_z-18 and x9_z-17 (the lower neighbour left on the ground under a LiDAR deck: a partial pay-back, the rule-2 neighbour pattern); any other tile fails",
+  "answer": {
+   "by": "lead, 2026-11-21",
+   "quote": "APPROVE with (a) and (c) as written, and (b) AMENDED. (b) amended: r52 (CBE NB entrance ramp from Jerome Ave, 5842.3,-8545.6) is conditional debt, not pre-agreed. Add pose m12: a driver view on the ramp from Jerome Ave up to the CBE, A vs B, G0 passing. Hydrogen's question: \"can a car still take the ramp: drawn, continuous, no step or hole?\" The page editor already added this pose to shots_MS3.js. If Hydrogen says drivable, r52 is debt: owner page editor, pay-back in the row 23 follow-up, expires 2026-11-28. If not, the lead gate rejects the round, and the next try leaves E 174 St unfreed. A missing entrance ramp is worse than the 18 m E 174 St gap. Any other vacate still fails, as you wrote. Also required in frames: m06 must show the street and columns back, and every pair passes G0 before Hydrogen. Record this in lead_terms.answer (quote it) and start the round; no further OK needed from me until the lead gate. Exploration only, switch off by default, not shippable.",
+   "earlier": "lead, same day, before the amendment: register row 23 stays open (18 lines / 4,825 m / 250 m gap); the follow-up rule comes after the claim fix and the tunnel seat; G0-G3 as stopping checks, plus the usual lift gate, new list and deck gap",
+   "pose_name": "the lead's 'pose m12' is m11_e174_ramp_drv in pe:data/census/shots_MS3.js (12 poses: the 11 page_modsplit2 poses + this one)"
+  },
+  "a_correction": {
+   "asked": "page coordinator to the lead, 2026-11-21: term (a) said city-street inherited must be 0; the corrected count is 3 lines / 348 m. Gate g_modelled at inherited city <= the 3 named lines and inherited total <= 21 / 5,172 m, register row 23 then 21 lines / 5,172 m?",
+   "answer": {
+    "by": "lead, 2026-11-21",
+    "decision": "DECLINED. Hold the round; don't run it.",
+    "quote": "with the corrected census, MODSPLIT=3 frees 1 line / 26 m, East 174th Street. That's the very place where it lifts the CBE NB entrance ramp (r52 vacate). A citywide drape, frames and Hydrogen for ~18 m of deck gap, at the risk of losing a ramp, isn't worth a round. The modsplit2 debts only exist with the switch on, so their lapsing costs live nothing.",
+    "decisions": [
+     "modsplit2 and modsplit3: retired as exploration, not adopted. Switches stay in the code, off. The modsplit2 debts are closed as moot (never on), not paid.",
+     "E 174 St (the r6t2 debt, 18 m) moves into the row 23 follow-up rule, with the other 21 lines (all 22 / 5,199 m open). That rule needs vacate-safe partial lift anyway, which also handles r52.",
+     "Keep guards G0-G3 and diag/modelled_census_s3.py; they carry into every page round.",
+     "Page work priority now: the claim fix (rule-2 neighbour, the 103-site class) on the critical path to shipping, then the tunnel seat, then the row 23 rule."
+    ]
+   }
+  }
+ }
+}

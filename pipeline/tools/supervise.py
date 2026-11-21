@@ -156,9 +156,14 @@ def sync_queue(run_dir):
         for it in Dq.items():   # one open verdict per run: a newer set of stopped steps replaces the older item
             if it["run"] == name and it["kind"] == "verdict" and it["status"] == "open" and it["step"] != key:
                 Dq.close(it, f"superseded: the run now stops at {', '.join(hard)}")
+        # the lead: a failed condition of a conditional debt (a hydrogen_pose gate) fails the round, no debt offered
+        nodebt = [g["id"] for g in cfg.get("gates", []) if g["id"] in hard and g.get("check") == "hydrogen_pose"]
+        ch = [c for c in Dq.CHOICES["verdict"] if not (nodebt and c == "debt")]
         Dq.raise_item(name, "+".join(hard), "verdict", owner,
-                      f"{cfg.get('round', name)} stopped at {', '.join(hard)}: fix in a new round, reasons, debt, or hold?",
-                      {k: {**res(k), "error": (T[k].get("error") or "")[:300]} for k in hard}, run_dir, priority=1)
+                      f"{cfg.get('round', name)} stopped at {', '.join(hard)}: {', '.join(ch)}?"
+                      + (f" (no debt: {', '.join(nodebt)} is the lead's condition)" if nodebt else ""),
+                      {k: {**res(k), "error": (T[k].get("error") or "")[:300]} for k in hard}, run_dir, priority=1,
+                      choices=ch)
     rows = os.path.join(run_dir, "register_rows_proposed.jsonl")
     if T.get("register_update", {}).get("status") == "verified" and os.path.exists(rows):
         last = json.loads(open(rows).read().strip().splitlines()[-1])

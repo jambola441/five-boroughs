@@ -287,22 +287,30 @@ def t_modelled_census(cfg, s, d):
     ('self'), only through a lane-hugging chain neighbour ('inherited'), or not at all ('free')."""
     out = os.path.join(OUT, s["id"] + ".json")
     p = existing_or_run(cfg, s, out, lambda: run_job(
-        s["id"], [py(), "-I", project("pe:diag/modelled_census.py"), project(s["terrain"]), project(s["LANES"]), out]
+        s["id"], [py(), "-I", project(s.get("script", "pe:diag/modelled_census.py")), project(s["terrain"]),
+                  project(s["LANES"]), out]
         + split_args(s), project("pe:"), s["id"] + ".log"))
     j = json.load(open(p))
     S, R2 = j["summary"], j.get("inherited_by_r2") or {}
     g = lambda k, f: (S.get(k) or {}).get(f, 0)
     inh = [r for r in j.get("rows", []) if r.get("cls") == "inherited"]
-    # split 3 (MODSPLIT=3, the class rule): each inherited row says whether its own OSM class is a city street
-    known = bool(inh) and all("city_street" in r for r in inh) or (not inh and s.get("split") == 3)
-    st = [r for r in inh if r.get("city_street")] if known else []
-    ot = [r for r in inh if not r.get("city_street")] if known else []
+    # split 3 (MODSPLIT=3, the class rule): an inherited line is a city street by its own OSM highway class
+    city = lambda r: r["city_street"] if "city_street" in r else bool(CITY_HW.match(r.get("hw") or ""))
+    known = ("inherited_by_class" in j or (bool(inh) and all("city_street" in r or "hw" in r for r in inh))
+             or (not inh and s.get("split") == 3))
+    st = [r for r in inh if city(r)] if known else []
+    ot = [r for r in inh if not city(r)] if known else []
     m = lambda rs: round(sum(r.get("len", 0) for r in rs))
     return {"out": p, "inherited_lines": g("inherited", "lines"), "inherited_m": g("inherited", "m"),
             "self_lines": g("self", "lines"), "self_m": g("self", "m"), "free_lines": g("free", "lines"),
             "free_m": g("free", "m"), "inherited_by_r2": json.dumps(R2),
             "inherited_street_lines": len(st) if known else -1, "inherited_street_m": m(st) if known else -1,
-            "inherited_other_lines": len(ot) if known else -1, "inherited_other_m": m(ot) if known else -1}
+            "inherited_other_lines": len(ot) if known else -1, "inherited_other_m": m(ot) if known else -1,
+            "inherited_by_class": json.dumps(j.get("inherited_by_class") or {}),
+            "freed_rows": json.dumps([{k: r.get(k) for k in ("name", "osm", "hw", "len")} for r in j.get("freed_rows", [])])[:4000]}
+
+
+CITY_HW = re.compile(r"^(residential|tertiary|secondary|primary|unclassified|service|living_street|pedestrian)(_link)?$")
 
 
 def split_args(s):
@@ -311,10 +319,11 @@ def split_args(s):
     sp = s.get("split")
     if not sp:
         return []
-    if sp == 3:
-        if not s.get("split_flag"):
-            raise RuntimeError(f"{s['id']}: split 3 needs split_flag (the page editor's class-rule mode) in the round file")
-        return [s["split_flag"]] if isinstance(s["split_flag"], str) else list(s["split_flag"])
+    if sp == 3:   # the page editor's class-rule mode: modelled_census_s3.py --split3 (or split_flag)
+        if not s.get("split_flag") and "modelled_census_s3" not in s.get("script", ""):
+            raise RuntimeError(f"{s['id']}: split 3 needs script pe:diag/modelled_census_s3.py (or split_flag)")
+        f = s.get("split_flag", "--split3")
+        return [f] if isinstance(f, str) else list(f)
     return ["--split"]
 
 
@@ -457,12 +466,29 @@ def gate(cfg, g, d):
             if int(on.get("inherited_street_lines", -1)) < 0:
                 return False, ("switch on: the census doesn't class its inherited lines (no city_street per row): "
                                "can't judge the city-street scope, fails closed"), {}
-            ok = int(on["inherited_street_lines"]) == 0
-            return ok, (f"switch on: {on['inherited_street_lines']} city-street-class lines / {on['inherited_street_m']} m "
-                        f"inherit 'modelled' (must be 0); {on['inherited_other_lines']} motorway / trunk / ext lines / "
+            # optional, from the round file: named city lines that may stay inherited, caps, lines that must be freed
+            J = json.load(open(on["out"]))
+            cityrows = [r for r in J.get("rows", []) if r.get("cls") == "inherited"
+                        and (r["city_street"] if "city_street" in r else CITY_HW.match(r.get("hw") or ""))]
+            allow = {str(o) for o in g.get("allowed_city_osm", [])}
+            stray = [r for r in cityrows if not allow & {str(o) for o in r.get("osm", [])}]
+            freed = {str(o) for r in J.get("freed_rows", []) for o in r.get("osm", [])}
+            missing = [str(o) for o in g.get("must_free_osm", []) if str(o) not in freed]
+            cm = lambda rs: round(sum(r.get("len", 0) for r in rs))
+            caps = [(len(cityrows), g.get("max_city_lines", 0), "city lines"), (cm(cityrows), g.get("max_city_m", 0), "city m"),
+                    (int(on["inherited_lines"]), g.get("max_total_lines", 1e9), "inherited lines"),
+                    (float(on["inherited_m"]), g.get("max_total_m", 1e9), "inherited m")]
+            over = [f"{lbl} {v} > {c}" for v, c, lbl in caps if v > c]
+            ok = not stray and not missing and not over
+            return ok, (f"switch on: {len(cityrows)} city-street-class lines / {cm(cityrows)} m inherit 'modelled' "
+                        f"(allowed: {len(allow)} named lines, caps {g.get('max_city_lines', 0)} lines / "
+                        f"{g.get('max_city_m', 0)} m); {len(stray)} not on the allowed list; must be freed: "
+                        f"{len(g.get('must_free_osm', []))}, missing {missing or 'none'}; over a cap: {over or 'none'}; "
+                        f"{on['inherited_other_lines']} motorway / trunk / ext lines / "
                         f"{on['inherited_other_m']} m still inherit (reported, not gated: the lead's scope); switch off: "
                         f"{off['inherited_lines']} lines / {off['inherited_m']} m; polygons newly riding with the switch on: "
-                        f"{rides}"), {}
+                        f"{rides}"), {"unbudgeted": [f"{r.get('name')} (osm {','.join(map(str, r.get('osm', [])))}, "
+                                         f"{r.get('hw')}, {r.get('len')} m)" for r in stray][:40]}
         ok = int(on["inherited_lines"]) == 0
         return ok, (f"switch on: {on['inherited_lines']} lines / {on['inherited_m']} m inherit 'modelled' (must be 0); "
                     f"switch off (the lead's required count): {off['inherited_lines']} deck lines / {off['inherited_m']} m "
@@ -475,16 +501,19 @@ def gate(cfg, g, d):
         pairs = json.load(open(f)).get("pairs", [])
         lim = g.get("max_diff_pct", 0.05)
         if k == "frames_capture":   # A vs B pixel difference on tiles the variant did not write
-            bad = [x for x in pairs if x.get("capture_diff_pct") is None or x["capture_diff_pct"] >= lim]
+            v = lambda x: x.get("g0_pixel_diff_pct", x.get("capture_diff_pct"))
+            bad = [x for x in pairs if v(x) is None or v(x) >= lim]
             return bool(pairs) and not bad, (f"{len(pairs)} pairs; {len(bad)} with a capture difference >= {lim} % on "
                                              f"unwritten tiles (must be 0: re-shoot before Hydrogen)"), \
-                {"unbudgeted": [f"{x.get('pose')}: {x.get('capture_diff_pct')} %" for x in bad][:40]}
-        bad = [x for x in pairs if x.get("structure_lost") is None or x["structure_lost"] > 0]
+                {"unbudgeted": [f"{x.get('pose')}: {v(x)} %" for x in bad][:40]}
+        lost = lambda x: x.get("g3_lost", x.get("structure_lost"))
+        bad = [x for x in pairs if lost(x) is None or lost(x) > 0]
         return bool(pairs) and not bad, (f"{len(pairs)} poses; {len(bad)} lose structure pieces A vs B (must be 0); "
                                          f"triangles / instances per pose in items"), \
-            {"unbudgeted": [f"{x.get('pose')}: {x.get('structure_lost')} pieces lost" for x in bad][:40],
-             "listed": [f"{x.get('pose')}: tris {x.get('tris_a')} -> {x.get('tris_b')}, instances {x.get('inst_a')} -> "
-                        f"{x.get('inst_b')}" for x in pairs][:40]}
+            {"unbudgeted": [f"{x.get('pose')}: {lost(x)} pieces lost" for x in bad][:40],
+             "listed": [f"{x.get('pose')}: tris {x.get('g3_tris_a', x.get('tris_a'))} -> {x.get('g3_tris_b', x.get('tris_b'))}, "
+                        f"instances {x.get('g3_inst_a', x.get('inst_a'))} -> {x.get('g3_inst_b', x.get('inst_b'))}"
+                        for x in pairs][:40]}
     if k in ("hydrogen_pose", "hydrogen_none_worse"):   # read Hydrogen's per-site rows (hydrogen_frames.json)
         f = os.path.join(OUT, "hydrogen_frames.json")
         rows = json.load(open(f)) if os.path.exists(f) else []
@@ -515,7 +544,10 @@ def gate(cfg, g, d):
                          f"{v['c'][1]} (raised {v.get('raised')}/{v.get('of')} vertices up to {v.get('dmax')} m; base "
                          f"height on LiDAR at {v.get('base_on_lidar')}/{v.get('sampled')})")
         return not bad, (f"{len(jg.get('vacate', []))} vacate polygons in {jg['total'].get('tiles', 0)} written tiles; "
-                         f"{len(jg.get('vacate', [])) - len(bad)} on the lead's debt list; {len(bad)} not (must be 0)"), \
+                         f"{len(jg.get('vacate', [])) - len(bad)} on the lead's debt list"
+                         + (f" ({sum(1 for e in dl if e.get('conditional'))} conditional: they hold only while their "
+                            f"condition gate passes)" if any(e.get("conditional") for e in dl) else "")
+                         + f"; {len(bad)} not (must be 0)"), \
             {"unbudgeted": [row(v) for v in bad][:40], "listed": [row(v) for v in jg.get("vacate", [])][:40]}
     if k == "lift_step":   # G2: low-only steps none; high-only within budget and only in the lead's allowed tiles
         jg = json.load(open(d[g["step"]]["out"]))
