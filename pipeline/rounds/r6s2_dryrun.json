@@ -1,6 +1,6 @@
 {
  "round": "v1c_r6s2",
- "prev": "v1c_r6s2 (dry run compares the round with itself)",
+ "prev": "v1c_r6r (dry run: r6s2 judged against r6r, as the drive test's GATE.json does)",
  "kind": "terrain_round_live",
  "mode": "existing",
  "expected_sha": "baa4c7a9d8938b6d249d9c9fbae868c978fa95bbe6fba97609fb1692ba471ad7",
@@ -19,11 +19,24 @@
   "decks": 17
  },
  "prev_qa": {
-  "b_underM": 37010,
-  "b_linesUnder": 592
+  "b_underM": 36961,
+  "b_noneM": 33227,
+  "b_linesUnder": 592,
+  "walls_onroad_m": 3876.9
  },
- "rules": {},
+ "rules": {
+  "b": {
+   "tolerance": 0.01
+  },
+  "walls": {
+   "kind": "no_rise"
+  },
+  "flight": {
+   "max_cm_at_80": 5
+  }
+ },
  "frame_pairs": {},
  "coordinator": "agy:gemini-4-hydrogen-high",
- "note": "Dry run on the frozen round: proves every step and parser; decides nothing."
+ "note": "Dry run on the frozen round: proves every step and parser; decides nothing.",
+ "live_ramps_flattened": null
 }

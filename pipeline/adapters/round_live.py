@@ -188,17 +188,41 @@ def q_rule(name, n, cfg):
     if name == "city":
         return x.get("error_chunks", 1) == 0, f"error chunks {x.get('error_chunks')}; counts reported"
     if name == "b":
+        # Lead rule (21 Nov): underM <= previous +1%, linesUnder <= previous, noneM ("nothing drawn") <= previous +1%.
         rule = R.get("b")
         if not rule: return None, "the lead has not set a pass rule for gate (b) yet"
-        prev = cfg["prev_qa"]["b_underM"]
-        return x["underM"] <= prev * (1 + rule.get("tolerance", 0)) and x["linesUnder"] <= cfg["prev_qa"]["b_linesUnder"], \
-            f"underM {x['underM']} vs {prev}; linesUnder {x['linesUnder']}"
+        P, tol = cfg["prev_qa"], rule.get("tolerance", 0.01)
+        pu = x.get("prev_underM", P["b_underM"])
+        pn = x.get("prev_noneM", P["b_noneM"])
+        pl = x.get("prev_linesUnder", P["b_linesUnder"])
+        ok = x["underM"] <= pu * (1 + tol) and x["linesUnder"] <= pl and x["noneM"] <= pn * (1 + tol)
+        return ok, f"underM {x['underM']} vs {pu}; noneM {x['noneM']} vs {pn}; linesUnder {x['linesUnder']} vs {pl} (+{tol:.0%})"
     if name == "walls":
+        # Lead rule: terrain rounds = no rise vs the previous round on the same highway build;
+        # highway rounds = on-road metres <= live's.
         rule = R.get("walls")
         if not rule: return None, "the lead has not set a pass rule for walls on terrain rounds yet"
         lim = cfg["prev_qa"]["walls_onroad_m"] if rule.get("kind") == "no_rise" else x["live_m"]
-        return x["onroad_m"] <= lim, f"on-road {x['onroad_m']} m vs limit {lim}"
+        return x["onroad_m"] <= lim + 1e-6, f"on-road {x['onroad_m']} m vs limit {lim} ({rule.get('kind')})"
     return None, "unknown gate"
+
+
+def bundle_verdict(n, cfg):
+    """Shippable vs LIVE (lead, 21 Nov): separate from the round's pass/fail. Every absolute gate against live must pass."""
+    lines, blocks = [], []
+    c, w, a, r = n.get("c"), n.get("walls"), n.get("a"), n.get("ramps")
+    if c is None: blocks.append("lower than live (ii): not measured")
+    elif c["ii_m"] > 0: blocks.append(f"lower than live (ii): {c['ii_m']} m at {c.get('ii_places')} places (must be 0)")
+    if w is None: blocks.append("walls on road: not measured")
+    elif w["onroad_m"] > w["live_m"]: blocks.append(f"walls on road: {w['onroad_m']} m > live {w['live_m']} m")
+    if a is None: blocks.append("free ends: not measured")
+    elif a["new"] > 0 or a["same"] != a["visible"]: blocks.append(f"free ends: {a['visible']} visible, {a['same']} same as live")
+    live_r = cfg.get("live_ramps_flattened") if r is None else r.get("live", cfg.get("live_ramps_flattened"))
+    if r is None: blocks.append("ramp census: not measured")
+    elif live_r is None: blocks.append("ramp census: no live baseline yet")
+    elif r["flattened"] > live_r: blocks.append(f"ramp census: {r['flattened']} flattened > live {live_r}")
+    return {"shippable": str(not blocks).lower(), "blocking": json.dumps(blocks),
+            "line": "BUNDLE: shippable" if not blocks else "BUNDLE: NOT shippable: " + "; ".join(blocks)}
 
 
 def main():
@@ -210,7 +234,7 @@ def main():
         if tid == "t_checks": return validate(req, c.get("pass") == "true")
         if tid == "t_freeze": return validate(req, c.get("verified") == "true" and c.get("matches_expected") == "true")
         if tid.startswith("gate_"): return validate(req, c.get("pass") == "true")
-        if tid in ("terrain_accept", "qa_accept"):
+        if tid in ("terrain_accept", "qa_accept", "highway_accept"):
             return validate(req, c.get("rules_pass") == "true" and c.get("decision") == "accept")
         return validate(req, True)
 
@@ -245,23 +269,32 @@ def main():
             return respond(req, "not_started", error=f"awaiting frames ({len(pairs)} pairs listed, missing {missing})")
         return respond(req, output={"pairs": len(pairs)})
     if tid == "gate_flight":
-        rule, res = cfg.get("rules", {}).get("flight"), cfg.get("flight_result")
+        rule = cfg.get("rules", {}).get("flight")
+        fl = gate_numbers(d["qa_round_gate"]).get("flight") if "qa_round_gate" in d else None
+        if rule and fl:  # drive test's GATE.json: {"pieces": N, "max_flight_cm_at_80": x}
+            ok = fl["max_flight_cm_at_80"] <= rule["max_cm_at_80"]
+            return respond(req, output={"pass": str(ok).lower(),
+                                        "detail": f"{fl['pieces']} new pieces, worst flight {fl['max_flight_cm_at_80']} cm at 80 km/h (max {rule['max_cm_at_80']})"})
+        res = cfg.get("flight_result")
         if not rule or not res or not os.path.exists(project(res)):
             return respond(req, "not_started", error="awaiting the lead's flight rule and the crest/flight result for the new pieces")
         rows = json.load(open(project(res)))
         bad = [r for r in (rows if isinstance(rows, list) else rows.get("rows", []))
                if r.get("flight_cm_at_80", 0) > rule["max_cm_at_80"]]
         return respond(req, output={"pass": str(not bad).lower(), "detail": f"{len(bad)} pieces over {rule['max_cm_at_80']} cm at 80 km/h"})
+    if tid == "bundle":
+        return respond(req, output=bundle_verdict(gate_numbers(d["qa_round_gate"]), cfg))
     if tid.startswith("gate_"):
         n = gate_numbers(d["qa_round_gate"])
         ok, why = q_rule(tid[len("gate_"):], n, cfg)
         if ok is None:
             return respond(req, "not_started", error=why)  # no rule or no number yet: blocks, never passes
         return respond(req, output={"pass": str(bool(ok)).lower(), "detail": why})
-    if tid in ("terrain_accept", "qa_accept"):
-        gates = {k: v for k, v in d.items() if k.startswith("gate_") or k in ("t_checks", "t_build", "t_freeze")}
+    if tid in ("terrain_accept", "qa_accept", "highway_accept"):
+        gates = {k: v for k, v in d.items() if k.startswith(("gate_", "d_")) or k in ("t_checks", "t_build", "t_freeze")}
+        # the BUNDLE line never decides the round: it is reported beside it
         rules_pass = all(v.get("pass", "true") == "true" for v in gates.values())
-        role = "terrain" if tid == "terrain_accept" else "qa"
+        role = tid.replace("_accept", "")
         prompt = (open(os.path.join(os.path.dirname(__file__), "..", "prompts", f"{role}_accept_live.md")).read()
                   + f"\n\nRound: {cfg['round']} (previous {cfg['prev']})"
                   + f"\n\nPlanned changes vs the previous round: {json.dumps(cfg.get('planned_diff', {}))}"
@@ -274,8 +307,10 @@ def main():
             v = coordinator_json(prompt, schema, cwd=OUT, spec=cfg.get("coordinator"))
         except Exception as e:
             return respond(req, "uncertain", error=f"coordinator failed: {e}"[:300])
-        return respond(req, output={"rules_pass": str(rules_pass).lower(), "decision": v["decision"],
-                                    "reasons": json.dumps(v["reasons"])})
+        out = {"rules_pass": str(rules_pass).lower(), "decision": v["decision"], "reasons": json.dumps(v["reasons"])}
+        if tid == "qa_accept":
+            out["bundle"] = d.get("bundle", {}).get("line", "not measured")
+        return respond(req, output=out)
     respond(req, "not_started", error=f"unknown task {tid}")
 
 

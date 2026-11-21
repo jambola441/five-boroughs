@@ -26,11 +26,12 @@ def main():
         d = deps(req)
         qa = d.get("qa_accept") or d.get("explore_accept") or {}
         return respond(req, output={"approved_by": decision.get("by", ""), "decision": qa.get("decision", ""),
-                                    "class_rows": qa.get("class_rows", "")})
+                                    "class_rows": qa.get("class_rows", ""), "bundle": qa.get("bundle") or "not assessed in this round"})
 
     if tid == "register_update":
         g = deps(req).get("lead_gate", {})
         row = {"round": cfg["round"], "decision": g.get("decision"), "approved_by": g.get("approved_by"),
+               "bundle": g.get("bundle", ""),
                "class_rows": json.loads(g.get("class_rows") or "[]"), "at": time.strftime("%Y-%m-%dT%H:%M:%S")}
         # Pilot: proposed rows only. Supabase and the Sheets register are wired in step 4.
         with open(os.path.join(OUT, "register_rows_proposed.jsonl"), "a") as f:

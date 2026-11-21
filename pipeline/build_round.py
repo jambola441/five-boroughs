@@ -35,6 +35,8 @@ def main():
 
     if cfg.get("kind") == "page_rule_explore":
         return write_plan(out, cfg, explore_tasks())
+    if cfg.get("kind") == "highway_round":
+        return write_plan(out, cfg, highway_tasks(cfg))
     if cfg.get("kind") == "terrain_round_live":
         return write_plan(out, cfg, terrain_live_tasks(list(cfg.get("frame_pairs") or {})))
 
@@ -59,7 +61,7 @@ def main():
         # validator needs BOTH gate_pass and Claude's accept, so the model can never override a failed gate.
         node("qa_accept", "qa", ["gate_pass", "decision", "reasons", "class_rows", "next_steps"],
              after=["terrain_checks", "drive_gate", "city_census"] + hyd, validated=True),
-        node("lead_gate", "lead", ["approved_by", "decision", "class_rows"], after=["qa_accept"]),
+        node("lead_gate", "lead", ["approved_by", "decision", "class_rows", "bundle"], after=["qa_accept"]),
         node("register_update", "lead", ["row"], after=["lead_gate"]),
     ]
     write_plan(out, cfg, tasks)
@@ -102,17 +104,39 @@ def terrain_live_tasks(pairs):
         node("frames_ready", "round_live", ["pairs"], after=["t_freeze"]),
     ] + [node(h, "qa", ["verdict", "fixed", "new_in_after", "seconds"], after=["frames_ready"], validated=True)
          for h in hyd] + [
-        node("qa_accept", "round_live", ["rules_pass", "decision", "reasons"], after=gates + hyd + ["frames_ready"],
-             validated=True),
-        node("lead_gate", "lead", ["approved_by", "decision", "class_rows"], after=["qa_accept"]),
+        # BUNDLE (shippable vs live) is reported on every round and never blocks the round itself.
+        node("bundle", "round_live", ["shippable", "blocking", "line"], after=["qa_round_gate"]),
+        node("qa_accept", "round_live", ["rules_pass", "decision", "reasons", "bundle"],
+             after=gates + hyd + ["frames_ready", "bundle"], validated=True),
+        node("lead_gate", "lead", ["approved_by", "decision", "class_rows", "bundle"], after=["qa_accept"]),
         node("register_update", "lead", ["row"], after=["lead_gate"]),
     ]
     return t
 
 
+def highway_tasks(cfg):
+    """macmini's make chain: A -> B passes in order -> C, then D checks after C (void chain inside one step).
+    Stop checks are mandatory steps; listed checks are reported. crossing/covered checks join when written."""
+    passes = [node(f"h_pass_{i:02d}", "highway", ["pass", "step"], after=[f"h_pass_{i - 1:02d}" if i else "h_assemble"],
+                   validated=True, prompt=f"post-pass {s}") for i, s in enumerate(cfg["passes"])]
+    last = f"h_pass_{len(cfg['passes']) - 1:02d}"
+    stops = ["d_floor_fix_guard", "d_tile_inventory", "d_no_surface", "d_unsupported", "d_underlay", "d_void", "d_walls"]
+    t = [node("h_guard", "highway", ["pass", "writes", "free_gb"], validated=True),
+         node("h_assemble", "highway", ["pass"], after=["h_guard"], validated=True)] + passes + [
+         node("h_part_move", "highway", ["pass"], after=[last], validated=True),
+         node("h_cbe_copy", "highway", ["pass"], after=["h_part_move"], validated=True)] + [
+         node(s, "highway", ["pass", "detail"], after=["h_cbe_copy"], validated=True) for s in stops] + [
+         node("d_listed", "highway", ["pass", "detail"], after=["h_cbe_copy"]),
+         node("highway_accept", "round_live", ["rules_pass", "decision", "reasons"], after=stops + ["d_listed"],
+              validated=True),
+         node("lead_gate", "lead", ["approved_by", "decision", "class_rows", "bundle"], after=["highway_accept"]),
+         node("register_update", "lead", ["row"], after=["lead_gate"])]
+    return t
+
+
 def write_plan(out, cfg, tasks):
     providers = {p: {"command": [PY, "-I", os.path.join(HERE, "adapters", p + ".py")], "env": ENV}
-                 for p in ("terrain", "qa", "lead", "explore", "round_live")}
+                 for p in ("terrain", "qa", "lead", "explore", "round_live", "highway")}
     plan = {"api_version": "swarm/v1", "name": "round: " + cfg["round"], "max_tasks": len(tasks) + 2,
             "providers": providers, "tasks": tasks}
     json.dump(plan, open(os.path.join(out, "plan.json"), "w"), indent=1)
