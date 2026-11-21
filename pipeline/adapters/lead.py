@@ -33,7 +33,10 @@ def main():
         row = {"round": cfg["round"], "decision": g.get("decision"), "approved_by": g.get("approved_by"),
                "bundle": g.get("bundle", ""),
                "class_rows": json.loads(g.get("class_rows") or "[]"), "at": time.strftime("%Y-%m-%dT%H:%M:%S")}
-        # Pilot: proposed rows only. Supabase and the Sheets register are wired in step 4.
+        ap = os.path.join(OUT, "approval.json")
+        if os.path.exists(ap):   # the lead's own words go with the row
+            row["lead_note"] = json.load(open(ap)).get("note", "")
+        # Proposed rows only: the lead writes the register (condition 4). Nothing here writes a sheet or a database.
         with open(os.path.join(OUT, "register_rows_proposed.jsonl"), "a") as f:
             f.write(json.dumps(row) + "\n")
         return respond(req, output={"row": json.dumps(row)[:3000]})

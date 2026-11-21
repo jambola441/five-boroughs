@@ -404,6 +404,46 @@ SCHEMA = {"type": "object", "properties": {
 OK_DECISIONS = ("accept", "keep_exploring")
 
 
+def trace_tables(cfg):
+    """Per trace class: sites and step metres; and trace class x LiDAR class, joined on site position (0.5 m).
+    Built from the round's own trace and LiDAR outputs, for every trace step that has a LiDAR step on the same list."""
+    out = {}
+    tr = [s for s in cfg["steps"] if s["tool"] == "trace"]
+    li = [s for s in cfg["steps"] if s["tool"] == "lidar"]
+    for t in tr:
+        try:
+            rows = json.load(open(step_out(cfg, t["id"])))["rows"]
+        except (OSError, ValueError, KeyError):
+            continue
+        per = {}
+        for r in rows:
+            c = per.setdefault(r["cls"], {"sites": 0, "step_m": 0.0, "max_m": 0.0})
+            c["sites"] += 1; c["step_m"] = round(c["step_m"] + r.get("mag", 0), 2); c["max_m"] = max(c["max_m"], r.get("mag", 0))
+        o = {"per_class": per, "total_step_m": round(sum(r.get("mag", 0) for r in rows), 2)}
+        for l in li:
+            if l["list"] != t["list"]:
+                continue
+            try:
+                lrows = json.load(open(step_out(cfg, l["id"])))["rows"]
+            except (OSError, ValueError, KeyError):
+                continue
+            def lcls(r):
+                c = r.get("cls", "?")
+                return ("C-none" if not r.get("lidar_cont") else "C-other") if c == "C" else c
+            x = {}
+            for r in rows:
+                m = next((q for q in lrows if abs(q["x"] - r["x"]) <= 0.5 and abs(q["z"] - r["z"]) <= 0.5), None)
+                k = lcls(m) if m else "unmatched"
+                cell = x.setdefault(r["cls"], {}).setdefault(k, {"sites": 0, "step_m": 0.0})
+                cell["sites"] += 1; cell["step_m"] = round(cell["step_m"] + r.get("mag", 0), 2)
+            o["trace_x_lidar"] = x
+            o["lidar_legend"] = ("A: LiDAR shows a continuous road at both the high and the low drawn side; B: only at the "
+                                 "high (restored) side; C-other: a continuous LiDAR road at some other height; C-none: no "
+                                 "continuous LiDAR road there; D: no LiDAR, no deck line within 15 m, or no drawn surface")
+        out[t["id"]] = o
+    return out
+
+
 def page_accept(req, cfg, d):
     gates = {k: v for k, v in d.items() if k.startswith("g_")}
     rules_pass = all(v.get("pass") == "true" for v in gates.values())
@@ -413,6 +453,10 @@ def page_accept(req, cfg, d):
     if (cfg.get("frames") or {}).get("unreadable_note"):
         brief["frames_note"] = cfg["frames"]["unreadable_note"]
     ev = {k: {kk: vv for kk, vv in v.items() if kk not in ("out", "rows")} for k, v in d.items()}   # no local paths
+    tables = trace_tables(cfg)
+    if tables:
+        ev["trace_tables"] = tables
+        json.dump(tables, open(os.path.join(OUT, "trace_tables.json"), "w"), indent=1)
     hf = os.path.join(OUT, "hydrogen_frames.json")
     if os.path.exists(hf):   # every frame's verdict in full, compactly (the step output itself is capped)
         ev["frame_reviews"] = [{"site": r["site"], "verdict": r["verdict"],
