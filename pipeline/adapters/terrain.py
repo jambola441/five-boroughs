@@ -7,7 +7,7 @@ import json
 import os
 import re
 
-from common import (claude_json, deps, load_request, project, respond, round_config, sha256, validate, OUT)
+from common import (coordinator_json, deps, load_request, project, respond, round_config, sha256, validate, OUT)
 
 ACCEPT_SCHEMA = {"type": "object", "properties": {
     "decision": {"type": "string", "enum": ["accept", "reject"]},
@@ -48,9 +48,9 @@ def main():
         prompt = (open(os.path.join(os.path.dirname(__file__), "..", "prompts", "terrain_accept.md")).read()
                   + "\n\nRound: " + cfg["round"] + "\n\nEvidence:\n" + json.dumps(d, indent=1)[:12000])
         try:
-            v = claude_json(prompt, ACCEPT_SCHEMA, cwd=OUT)
+            v = coordinator_json(prompt, ACCEPT_SCHEMA, cwd=OUT, spec=cfg.get("coordinator"))
         except Exception as e:  # sign-in, timeout, bad output: never guess an acceptance
-            return respond(req, "uncertain", error=f"claude failed: {e}"[:300])
+            return respond(req, "uncertain", error=f"coordinator failed: {e}"[:300])
         return respond(req, output={"decision": v["decision"], "reasons": json.dumps(v["reasons"])})
 
     respond(req, "not_started", error=f"unknown task {tid}")

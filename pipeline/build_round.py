@@ -33,6 +33,9 @@ def main():
     os.makedirs(out, exist_ok=False)  # a new folder per run, never reused
     json.dump(cfg, open(os.path.join(out, "round.json"), "w"), indent=1)
 
+    if cfg.get("kind") == "page_rule_explore":
+        return write_plan(out, cfg, explore_tasks())
+
     pairs = list(cfg["frame_pairs"])
     hyd = [f"hydrogen_{p}" for p in pairs]
     tasks = [
@@ -57,9 +60,28 @@ def main():
         node("lead_gate", "lead", ["approved_by", "decision", "class_rows"], after=["qa_accept"]),
         node("register_update", "lead", ["row"], after=["lead_gate"]),
     ]
+    write_plan(out, cfg, tasks)
+
+
+def explore_tasks():
+    """An exploration round: may get worse within its declared budget; never ships while in debt."""
+    return [
+        node("pin_inputs", "explore", ["terrain_manifest_sha", "terrain_pinned"], validated=True),
+        node("explore_gate", "explore", ["gate_pass", "new_places", "gone_places", "new_within_budget_marginal",
+                                         "new_debt", "new_unbudgeted", "debt_items", "target_fixes_held",
+                                         "totals_deltas", "totals_over_budget", "expired",
+                                         "drop_metres_fixed", "drop_metres_new"], after=["pin_inputs"]),
+        node("explore_accept", "explore", ["gate_pass", "decision", "reasons", "class_rows", "pay_back_plan",
+                                           "next_steps"], after=["explore_gate"], validated=True),
+        node("lead_gate", "lead", ["approved_by", "decision", "class_rows"], after=["explore_accept"]),
+        node("register_update", "lead", ["row"], after=["lead_gate"]),
+    ]
+
+
+def write_plan(out, cfg, tasks):
     providers = {p: {"command": [PY, "-I", os.path.join(HERE, "adapters", p + ".py")], "env": ENV}
-                 for p in ("terrain", "qa", "lead")}
-    plan = {"api_version": "swarm/v1", "name": "terrain round: " + cfg["round"], "max_tasks": len(tasks) + 2,
+                 for p in ("terrain", "qa", "lead", "explore")}
+    plan = {"api_version": "swarm/v1", "name": "round: " + cfg["round"], "max_tasks": len(tasks) + 2,
             "providers": providers, "tasks": tasks}
     json.dump(plan, open(os.path.join(out, "plan.json"), "w"), indent=1)
     print(os.path.join(out, "plan.json"))

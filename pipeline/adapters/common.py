@@ -54,6 +54,41 @@ def round_config():
         return json.load(f)
 
 
+DEFAULT_COORDINATOR = "agy:gemini-4-hydrogen-high"  # Gemini by default, to save Claude quota
+
+
+def coordinator_json(prompt, schema, cwd, spec=None, timeout=600):
+    """Run one coordinator judgement on the model named by spec ('agy:MODEL' or 'claude:MODEL')."""
+    spec = spec or DEFAULT_COORDINATOR
+    vendor, _, model = spec.partition(":")
+    if vendor == "claude":
+        return claude_json(prompt, schema, cwd, model=model, timeout=timeout)
+    if vendor == "agy":
+        return agy_json(prompt, schema, cwd, model=model, timeout=timeout)
+    raise ValueError(f"unknown coordinator {spec}")
+
+
+def agy_json(prompt, schema, cwd, model="gemini-4-hydrogen-high", timeout=600):
+    """One Gemini call through agy in an empty private folder, shell commands denied, JSON-schema output."""
+    work = os.path.join(cwd, "agy_coord")
+    os.makedirs(work, exist_ok=True)
+    p = subprocess.run(["agy", "-p", prompt, "--model", model, "--add-dir", work,
+                        "--settings", '{"permissions":{"deny":["command(*)"]}}', "--json-schema", json.dumps(schema),
+                        "--print-timeout", f"{timeout}s", "--output-format", "json"],
+                       cwd=work, capture_output=True, text=True, timeout=timeout + 60)
+    data = json.loads(p.stdout)
+    if data.get("status") != "SUCCESS":
+        raise RuntimeError(f"agy status {data.get('status')}")
+    out = data.get("structured_output")
+    if out is None:
+        import re
+        m = re.findall(r"\{.*\}", data.get("response", ""), re.S)
+        out = json.loads(m[-1]) if m else None
+    if not isinstance(out, dict):
+        raise RuntimeError("agy returned no JSON object")
+    return out
+
+
 def claude_json(prompt, schema, cwd, model="claude-opus-5-5", timeout=600):
     """One isolated Claude call: no settings, hooks, memory, tools or MCP; nothing saved.
     USER must be in the adapter's environment for the CLI to find its sign-in."""

@@ -10,7 +10,7 @@ import shutil
 import subprocess
 import time
 
-from common import (claude_json, deps, load_request, project, respond, round_config, validate, OUT)
+from common import (coordinator_json, deps, load_request, project, respond, round_config, validate, OUT)
 
 MIN_FREE_GB = 5
 HYDROGEN = "gemini-4-hydrogen-high"
@@ -123,9 +123,9 @@ def main():
                   + "\n\nEvidence (outputs of the nodes this one depends on):\n"
                   + json.dumps(deps(req), indent=1)[:16000])
         try:
-            v = claude_json(prompt, QA_SCHEMA, cwd=OUT)
+            v = coordinator_json(prompt, QA_SCHEMA, cwd=OUT, spec=cfg.get("coordinator"))
         except Exception as e:
-            return respond(req, "uncertain", error=f"claude failed: {e}"[:300])
+            return respond(req, "uncertain", error=f"coordinator failed: {e}"[:300])
         with open(os.path.join(OUT, f"qa_accept_a{req.get('attempt', 1)}.json"), "w") as f:
             json.dump(v, f, indent=1)  # kept even when the validator then fails the node on a reject
         return respond(req, output={"gate_pass": str(gate_pass).lower(), "decision": v["decision"],

@@ -23,7 +23,8 @@ def main():
         if not os.path.exists(path):
             return respond(req, "not_started", error="awaiting lead approval (write approval.json, then retry)")
         decision = json.load(open(path))
-        qa = deps(req).get("qa_accept", {})
+        d = deps(req)
+        qa = d.get("qa_accept") or d.get("explore_accept") or {}
         return respond(req, output={"approved_by": decision.get("by", ""), "decision": qa.get("decision", ""),
                                     "class_rows": qa.get("class_rows", "")})
 

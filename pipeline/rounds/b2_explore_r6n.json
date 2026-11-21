@@ -1,0 +1,44 @@
+{
+  "round": "B″ lift rule, exploration round 1 (shadow, terrain r6n)",
+  "kind": "page_rule_explore",
+  "mode": "explore",
+  "idea": "Make B″ the page's lifting rule: a street polygon rides its deck whole when it overshoots the deck by 6 m or less, otherwise it is clipped (high decks) or blended (low decks). B′ clips everything at the deck surface + 1 m.",
+  "baseline_rule": "B′ (liftrule 3)",
+  "candidate_rule": "B″ (liftrule 4)",
+  "terrain_manifest": "work/terrain_study/p2/out/manifest_terrain_v1c_r6n_sha256.json",
+  "terrain_manifest_sha": "a3ca9c9c04788c25168c0298a9a78eef88155d3b1fded431f79b89927f72bb35",
+  "new_gone_list": "work/page_editor/data/census/city_new_B4_vs_B3_r6n.json",
+  "totals_source": "page editor notes page_editor_Bpp_vs_Bp_r6n_2026-11-21.md (drive test's exact harness on r6n)",
+  "totals": {
+    "visible_drivable_ends": [16, 16],
+    "car_ledges_2m": [353, 354],
+    "car_steps_2m": [2047, 2062],
+    "curbs_km": [13.17, 13.61],
+    "car_raised_flags": [8840, 11562]
+  },
+  "budget": {
+    "marginal_step_max_m": 2.5,
+    "marginal_steps_new_places": 10,
+    "visible_drivable_ends_delta": 0,
+    "car_ledges_2m_delta": 5,
+    "car_steps_2m_delta": 30,
+    "curbs_km_delta": 0.5,
+    "car_raised_flags_delta": 3000
+  },
+  "debt": [
+    {"name": "Bruckner Blvd NB entrance from Havemeyer Ave: 12.43 m step (B″ fixes lost contact there but adds this)", "x": 11606, "z": -6688, "radius_m": 90, "pay_back": "next exploration round"},
+    {"name": "Cross Bronx Expy 41113 lost contact at the #6 site", "x": 8453, "z": -7776, "radius_m": 30, "pay_back": "expected fixed by the stacked-claim fix (reslocal)"}
+  ],
+  "target_fixed": [
+    {"name": "Mill Basin Bridge 5.04 m", "x": 6992, "z": 18195},
+    {"name": "Mill Basin Bridge 5.03 m", "x": 6977, "z": 18246},
+    {"name": "Roosevelt Ave Bridge 3.86 m", "x": 12096, "z": 1214}
+  ],
+  "expires": "2026-11-28",
+  "max_rounds": 3,
+  "known_gaps": [
+    "Measured on terrain r6n, two rounds old; the current round is r6r.",
+    "No B″ frames exist, so no Hydrogen review in this round.",
+    "Totals were typed from the page editor's notes, not read from a machine file."
+  ]
+}
