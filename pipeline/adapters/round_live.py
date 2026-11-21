@@ -13,6 +13,7 @@ _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))  # -I drops th
 
 import hashlib
 import json
+import math
 import os
 import re
 import shutil
@@ -80,6 +81,13 @@ def t_checks(cfg):
             diff[k] = int(v)
     if deck_names:
         diff["deck_names"] = deck_names
+    # junction pairs over 2 m: none may be NEW vs the previous round's (x, z within 2 m and step within 0.3 m)
+    pp = [project(f"{TS}/p2/checks/{x}_deck_checks_pairs.json") for x in (r, cfg.get("prev", ""))]
+    if all(os.path.exists(x) for x in pp):
+        cur, prev = (json.load(open(x))["_junction_pairs_over_2m"]["after"] for x in pp)
+        new = [q for q in cur if not any(math.hypot(q["x"] - o["x"], q["z"] - o["z"]) <= 2
+                                         and abs(q["step"] - o["step"]) <= 0.3 for o in prev)]
+        diff["new_junction_pairs"] = [f"{q['step']} m at {q['x']:.0f},{q['z']:.0f}" for q in new]
     # junctions: the deck checks' own JSON when written (graph rounds), else the round log
     dc = project(f"{TS}/p2/checks/{r}_deck_checks.json")
     if os.path.exists(dc):
@@ -114,9 +122,14 @@ def t_rules(c, cfg):
     if int(c["join_steps_gt_0p1"]) > p["join_steps_gt_0p1"]: fails.append("join steps rose")
     for k in ("tiles", "water", "skirts"):
         if diff.get(k, 0) > cfg.get("planned_diff", {}).get(k, 0): fails.append(f"{k} changed outside the plan")
-    if "decks" in diff and diff["decks"] != cfg.get("planned_diff", {}).get("decks", diff["decks"]):
-        fails.append(f"deck files changed {diff['decks']} != plan {cfg['planned_diff']['decks']}")
     plan_tiles = cfg.get("planned_diff", {}).get("deck_tiles")
+    # with named tiles, the count may differ (a new deck file where a tile fell back to live); the names may not
+    if not plan_tiles and "decks" in diff and diff["decks"] != cfg.get("planned_diff", {}).get("decks", diff["decks"]):
+        fails.append(f"deck files changed {diff['decks']} != plan {cfg['planned_diff']['decks']}")
+    if diff.get("new_junction_pairs"):
+        fails.append(f"new junction pairs over 2 m vs {cfg.get('prev')}: {diff['new_junction_pairs'][:5]}")
+    if "new_junction_pairs" not in diff and cfg.get("prev_terrain", {}).get("junction_pairs_rule", True):
+        fails.append("junction pairs file missing for this round or the previous one")
     if plan_tiles and diff.get("deck_names"):   # each changed deck file must belong to a planned tile
         off = [f for f in diff["deck_names"] if os.path.splitext(f)[0] not in {f"tile_{t}" for t in plan_tiles}]
         if off: fails.append(f"deck files changed outside the planned tiles: {off[:6]}")
