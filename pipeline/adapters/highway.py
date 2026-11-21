@@ -32,12 +32,12 @@ def paths(cfg):
             "B": cfg["input_build"], "prev_nocbe": f"work/p2net/final_fdr/{cfg['prev']}_nocbe"}
 
 
-def run(cfg, argv, log, env=None, cwd=None):
+def run(cfg, argv, log, env=None, cwd=None, wait=None):
     """macmini's own command, unchanged, as a detached job (see common.run_job); output goes to log."""
     py = os.path.join(os.environ["NYC_ROOT"], ".venv/bin/python")
     argv = [py if a == "$PY" else a for a in argv]
     return run_job(os.path.splitext(log)[0], argv, cwd or project(HW), log,
-                   env={"P2_TERV": cfg["p2_terv"], **(env or {})})
+                   env={"P2_TERV": cfg["p2_terv"], **(env or {})}, **({} if wait is None else {"wait": wait}))
 
 
 def jload(rel):
@@ -201,11 +201,15 @@ def main():
         cmds += [(["$PY", "-I", f"work/p2net/{s}.py", RC], {}) for s in
                  ("column_span_check", "step_census", "overlap_count")]   # column_rules_check is the d_columns stop
         cmds += [(["$PY", "-I", "work/p2net/size_by_class.py", "work/hw7/final/all", RC], {})]
-        rcs = [run(cfg, a, f"d_listed_{i}.log", e) for i, (a, e) in enumerate(cmds)]
+        # one job at a time, each call within Irrigator's 120 s: finished jobs are collected, the next one is started
+        import time as _t
+        t0, rcs = _t.time(), []
+        for i, (a, e) in enumerate(cmds):
+            rcs.append(run(cfg, a, f"d_listed_{i}.log", e, wait=max(0, 60 - (_t.time() - t0))))
         # page editor's at-grade check: reads its script locally (page code never leaves this machine)
         rcs.append(run(cfg, ["node", project("pe:phaseb/atgrade_check.mjs"), f"highways/{RC}",
                              f"work/terrain_study/p1/terrain/{cfg['p2_terv']}", f"highways/work/p2net/atgrade_{r}.json"],
-                       "d_listed_atgrade.log", cwd=os.environ["NYC_ROOT"]))
+                       "d_listed_atgrade.log", cwd=os.environ["NYC_ROOT"], wait=max(0, 60 - (_t.time() - t0))))
         return respond(req, output={"pass": "true", "detail": f"{len(cmds)} listed checks, exits {rcs}"})
     respond(req, "not_started", error=f"unknown task {tid}")
 

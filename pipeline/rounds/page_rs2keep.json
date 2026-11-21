@@ -236,7 +236,5 @@
  "max_rounds": 3,
  "success_measure": "rule-2 new-step metres in this round's trace (per_class rule2 step_m) vs the 960 m rule-2 base of round 1 (r6r citywide; r6s2 959.9 m)",
  "kept_reasons": "pe:data/census/rs2keep_kept_reasons.json",
- "require_sha": {
-  "pe:phaseb/setd_core.mjs": "9b15509dd672e20dcff39bef6004a5d612e467c4e8b0f97154321108d3da0f6d"
- }
+ "switch_pending": "the page editor's area switch (RS2AREA=1 or similar): add it to every RS2KEEP step before the round starts"
 }

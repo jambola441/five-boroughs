@@ -122,13 +122,15 @@ def claude_json(prompt, schema, cwd, model="claude-opus-5-5", timeout=600):
 # up by name and settles once it has exited. A job is started at most once per run folder.
 
 JOB_WAIT = 90  # seconds a call waits for its job before handing back (under the 120 s deadline)
+import time as _time
+_CALL_START = _time.time()   # this adapter call's start: a step that chains jobs never waits past the deadline
 
 
 class Running(Exception):
     """The step's job is still running: the step reports not_started and is retried later."""
 
 
-def run_job(name, cmd, cwd, log, env=None, wait=JOB_WAIT):
+def run_job(name, cmd, cwd, log, env=None, wait=None):
     """Run cmd as a detached job named name; return its exit code once it has finished, else raise Running.
     stdout+stderr go to OUT/log. A job that died without writing its exit code raises RuntimeError."""
     import time
@@ -144,7 +146,8 @@ def run_job(name, cmd, cwd, log, env=None, wait=JOB_WAIT):
         json.dump({"pid": p.pid, "cmd": [str(c) for c in cmd], "cwd": cwd, "log": log, "started": time.time()},
                   open(rec, "w"))
     j = json.load(open(rec))
-    t_end = time.time() + wait
+    budget = max(0.0, JOB_WAIT - (time.time() - _CALL_START))   # whatever is left of this call's 90 s
+    t_end = time.time() + (budget if wait is None else min(wait, budget))
     while True:
         if os.path.exists(rcf):
             return int(open(rcf).read().strip() or -1)

@@ -66,7 +66,8 @@ def ref(cfg, d, v):
 
 def node_env(s):
     """The switches the spec names, passed through to the node tools exactly as the round file sets them."""
-    env = {k: str(s[k]) for k in ("TERV", "LIFTRULE", "RESLOCAL", "ONDECK", "LANES", "POLYLIFT", "RS2KEEP") if k in s}
+    env = {k: str(s[k]) for k in ("TERV", "LIFTRULE", "RESLOCAL", "ONDECK", "LANES", "POLYLIFT", "RS2KEEP")
+           + tuple(s.get("extra_switches", ())) if k in s}
     if "LANES" in env:
         env["LANES"] = project(env["LANES"])
     return env
@@ -342,7 +343,8 @@ def gate(cfg, g, d):
                 if not (hb is None or h - hb > 2):
                     continue
                 cont = e[4] if len(e) > 4 else None
-                if cont is not None and any(abs(c - h) <= 1.0 for c in cont):
+                on = e[5] if len(e) > 5 else (any(abs(c - h) <= 1.0 for c in cont) if cont is not None else None)
+                if on:   # the page editor's on_lidar flag: a continuous layer within 1 m of the drawn height
                     on_lidar.append((r, x, z, h, hb))
                 elif not near({"x": x, "z": z}, [dict(q, radius_m=5) for q in rs], 5):
                     spikes.append((r, x, z, h, hb, cont))
