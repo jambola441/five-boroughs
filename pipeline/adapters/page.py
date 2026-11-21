@@ -318,8 +318,12 @@ def gate(cfg, g, d):
         bad = [r for r in fails if not near(at(r), [dict(q, radius_m=5) for q in rs], 5)]
         by = {}
         for r in rows: by[r.get("cls", "?")] = by.get(r.get("cls", "?"), 0) + 1
-        return not bad, (f"{len(rows)} kept claims: {by}; {len(fails)} FAIL, {len(fails) - len(bad)} of them with a "
-                         f"reason; D = fewer than 3 usable points (listed, not a fail)"), \
+        raised = by.get("PASS", 0) + by.get("FAIL", 0) + by.get("D", 0)   # NOLIFT doesn't count
+        d_share = by.get("D", 0) / raised if raised else 0.0
+        unsure = d_share > 0.2   # the lead: too much of the rule unverified -> uncertain, blocks
+        return (not bad and not unsure), (("UNCERTAIN (blocks): " if unsure else "")
+                + f"{len(rows)} kept claims: {by}; {len(fails)} FAIL, {len(fails) - len(bad)} of them with a reason; "
+                f"D {by.get('D', 0)} of {raised} that raised anything = {d_share:.0%} (cap 20 %)"), \
             {"unbudgeted": [f"FAIL at {r['c'][0]:.0f},{r['c'][1]:.0f}: {r.get('match')}/{r.get('n')} raised points on "
                             f"LiDAR" for r in bad][:30]}
     if k == "census":
