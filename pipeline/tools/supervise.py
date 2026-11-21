@@ -198,8 +198,18 @@ def sync_queue(run_dir):
         event(name, "queue", item=it["id"], applied=a["choice"], by=a["by"])
 
 
+def close_retired():
+    """A retired run waits on nobody: its open items close."""
+    import decisions as Dq
+    for it in Dq.items():
+        if it["status"] == "open" and os.path.exists(os.path.join(RUNS, it["run"], "RETIRED")):
+            Dq.close(it, "the run was retired")
+            event(it["run"], "queue", item=it["id"], what="closed: run retired")
+
+
 def tick():
     report_changes()
+    close_retired()
     for run_dir in sorted(glob.glob(os.path.join(RUNS, "*"))):
         if (os.path.basename(run_dir).startswith("_") or os.path.exists(os.path.join(run_dir, "RETIRED"))
                 or not os.path.exists(os.path.join(run_dir, "run", "state.json"))):
