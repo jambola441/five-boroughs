@@ -1,0 +1,89 @@
+{
+ "round": "Page round 1 (frames re-shot): low-neighbour trace under reslocal=1; measurements reused from page-trace-rl1-1",
+ "kind": "page_round",
+ "mode": "live",
+ "accept": "trace",
+ "question": "Why does reslocal=1 add the ~155 citywide (r6r) and 67 test-set new car steps >= 2 m? Which claim rule causes each, and what does LiDAR say the road really does there?",
+ "steps": [
+  {
+   "id": "p_trace_67",
+   "tool": "trace",
+   "list": "runs:b2-round2/new_b1rl_vs_b1.json",
+   "TERV": "v1c_r6r",
+   "LIFTRULE": 3,
+   "RESLOCAL": 1,
+   "LANES": "highways/work/p2net/final_fdr/r14s",
+   "use_existing": true,
+   "existing": "runs:page-trace-rl1-1/p_trace_67.json"
+  },
+  {
+   "id": "p_lidar_67",
+   "tool": "lidar",
+   "list": "runs:b2-round2/new_b1rl_vs_b1.json",
+   "drape": "runs:b2-round2/drape_b1rl",
+   "use_existing": true,
+   "existing": "runs:page-trace-rl1-1/p_lidar_67.json"
+  },
+  {
+   "id": "p_trace_city_r6r",
+   "tool": "trace",
+   "list": "pe:data/census/cbe6/city_new_rl_vs_off.json",
+   "TERV": "v1c_r6r",
+   "LIFTRULE": 3,
+   "RESLOCAL": 1,
+   "LANES": "highways/work/p2net/final_fdr/r14s",
+   "use_existing": true,
+   "existing": "runs:page-trace-rl1-1/p_trace_city_r6r.json"
+  },
+  {
+   "id": "p_lidar_city_r6r",
+   "tool": "lidar",
+   "use_existing": true,
+   "existing": "pe:data/census/cbe6/lidar_check_rl1.json",
+   "list": "pe:data/census/cbe6/city_new_rl_vs_off.json",
+   "drape": "work/drive_audit/page_drape/v1c_r6r_r14s_lr3_rl"
+  },
+  {
+   "id": "p_newlist_city_r6s2",
+   "tool": "newlist",
+   "base_flags": "work/drive_audit/deckends/lift_pd_v1c_r6s2_r14s_lr3/city/flags_drape.json",
+   "variant_flags": "work/drive_audit/deckends/lift_pd_v1c_r6s2_r14s_lr3_rl1/city/flags_drape.json",
+   "use_existing": true,
+   "existing": "runs:page-trace-rl1-1/p_newlist_city_r6s2.json"
+  },
+  {
+   "id": "p_trace_city_r6s2",
+   "tool": "trace",
+   "list": "step:p_newlist_city_r6s2",
+   "after": [
+    "p_newlist_city_r6s2"
+   ],
+   "TERV": "v1c_r6s2",
+   "LIFTRULE": 3,
+   "RESLOCAL": 1,
+   "LANES": "highways/work/p2net/final_fdr/r14s",
+   "use_existing": true,
+   "existing": "runs:page-trace-rl1-1/p_trace_city_r6s2.json"
+  }
+ ],
+ "gates": [],
+ "frames": {
+  "folder": "pe:frames/graph/page_trace_rl1",
+  "after": [
+   "p_trace_67",
+   "p_trace_city_r6r"
+  ],
+  "pick_from": [],
+  "per_class": 4,
+  "panels": [
+   "today: B′, reslocal off",
+   "B′ + reslocal=1"
+  ],
+  "variants": [
+   "LIFTRULE=3 RESLOCAL=0",
+   "LIFTRULE=3 RESLOCAL=1"
+  ],
+  "note": "3-6 sites of each trace class; one side-by-side image per site",
+  "unreadable_note": "page editor: pt05, pt06, pt09, pt17, pt18 re-shot after a pixel-spread check"
+ }
+}

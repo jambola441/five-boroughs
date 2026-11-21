@@ -355,7 +355,11 @@ def hydrogen_frames(cfg):
     jobs = os.path.join(OUT, "jobs")
     state = lambda tag: ("done" if os.path.exists(os.path.join(jobs, "hydrogen_" + tag, "rc")) else
                          "running" if os.path.exists(os.path.join(jobs, "hydrogen_" + tag, "job.json")) else "new")
-    tags = {site: "page_" + re.sub(r"[^A-Za-z0-9_.-]", "_", site) for site in sites}
+    import hashlib
+    def ftag(site):   # keyed by content: a re-shot frame gets a fresh review, an unchanged one keeps its verdict
+        h = hashlib.sha256(b"".join(open(os.path.join(folder, f), "rb").read() for f in sites[site])).hexdigest()[:10]
+        return "page_" + re.sub(r"[^A-Za-z0-9_.-]", "_", site) + "_" + h
+    tags = {site: ftag(site) for site in sites}
     for site, files in sites.items():   # at most HYD_PARALLEL Hydrogen calls at once; never block past the deadline
         tag = tags[site]
         st = state(tag)

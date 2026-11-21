@@ -109,8 +109,17 @@ def main():
     if tid.startswith("h_after_"):   # passes after part_move, before the CBE copy (r14u: drive_band_clear)
         st = cfg["after_part_move"][int(tid[len("h_after_"):])]
         rc = run(cfg, ["$PY", "-I", f"work/p2net/{st}.py", R], f"{tid}_{st}.log", cfg["pass_env"])
-        return respond(req, output={"pass": str(rc == 0).lower(), "step": st}) if rc == 0 else \
-            respond(req, "settled", error=f"{st} exited {rc}")
+        if rc != 0:
+            return respond(req, "settled", error=f"{st} exited {rc}")
+        if st == "drive_band_clear":   # lead's condition (21 Nov): it may remove retaining_wall faces only
+            j = jload(f"work/p2net/drive_band_clear_{r}.json")
+            other = {k: v for k, v in j.items() if k.startswith("removed_by_material_")
+                     and k != "removed_by_material_retaining_wall" and v}
+            if other:
+                return respond(req, output={"pass": "false", "step": f"{st} removed non-wall material: {other}"})
+            return respond(req, output={"pass": "true", "step": f"{st}: {j.get('removed_by_material_retaining_wall', 0)} "
+                                                              f"retaining_wall triangles removed, nothing else"})
+        return respond(req, output={"pass": "true", "step": st})
 
     if tid == "h_cbe_copy":
         for t in CBE:
