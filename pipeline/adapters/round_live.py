@@ -63,11 +63,16 @@ def t_checks(cfg):
     cr = json.load(open(project(f"{TS}/p2/checks/{r}_crest_census.json")))["summary"]["by_kind"]
     crest8 = cr["raised"]["ge_8pct_near_end"] + cr["ext"]["ge_8pct_near_end"]
     crest12 = cr["raised"]["ge_12pct_near_end"] + cr["ext"]["ge_12pct_near_end"]
+    # widened census (every deck line incl. the fallback tiles, any kind), when the terrain study wrote one
+    wp = project(f"{TS}/p2/checks/{r}_crest_census_widened.json")
+    wd = json.load(open(wp))["summary"]["widened"] if os.path.exists(wp) else {}
     js = json.load(open(project(f"{TS}/p2/checks/{r}_join_steps.json")))["summary"]["steps_gt_0p1"]
     log = open(project(f"{TS}/p2/work/v1c_r6/{r.replace('v1c_', '')}_round.log")).read()
     jm = re.search(r"'after': \{[^}]*'over_2': (\d+), 'max': ([\d.]+)", log)
     diff = {k: int(v) for k, v in re.findall(r"^(tiles|water|skirts|decks) \S+ vs \S+ differing: (\d+)", log, re.M)}
-    return {"free_ends": free_ends, "crest_8pct": crest8, "crest_12pct": crest12, "join_steps_gt_0p1": js,
+    return {"free_ends": free_ends, "crest_8pct": crest8, "crest_12pct": crest12,
+            "crest_widened_8": wd.get("ge8_near_end", -1), "crest_widened_12": wd.get("ge12_near_end", -1),
+            "join_steps_gt_0p1": js,
             "junctions_over_2": int(jm.group(1)) if jm else -1, "junctions_max": float(jm.group(2)) if jm else -1,
             "differ": json.dumps(diff)}
 
@@ -81,6 +86,13 @@ def t_rules(c, cfg):
     if float(c["junctions_max"]) > p["junctions_max"] + 0.5: fails.append("junction max rose > 0.5 m")
     if int(c["crest_8pct"]) > p["crest_8pct"] or int(c["crest_12pct"]) > p["crest_12pct"]:
         if not cfg.get("lead_ok_crest"): fails.append("crest census rose without the lead's OK")
+    if "crest_widened_ge8_near_end" in p:   # widened baseline: the round must have measured it, and not risen
+        w8, w12 = int(c.get("crest_widened_8", -1)), int(c.get("crest_widened_12", -1))
+        if w8 < 0:
+            fails.append("widened crest census not written for this round")
+        elif (w8 > p["crest_widened_ge8_near_end"] or w12 > p["crest_widened_ge12_near_end"]) and not cfg.get("lead_ok_crest"):
+            fails.append(f"widened crest census {w8}/{w12} rose vs {p['crest_widened_ge8_near_end']}/"
+                         f"{p['crest_widened_ge12_near_end']} without the lead's OK")
     if int(c["join_steps_gt_0p1"]) > p["join_steps_gt_0p1"]: fails.append("join steps rose")
     for k in ("tiles", "water", "skirts"):
         if diff.get(k, 0) > cfg.get("planned_diff", {}).get(k, 0): fails.append(f"{k} changed outside the plan")

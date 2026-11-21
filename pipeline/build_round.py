@@ -94,7 +94,8 @@ def terrain_live_tasks(pairs):
     gates = [f"gate_{g}" for g in GATES]
     t = [
         node("t_build", "round_live", ["built", "frozen"], validated=True),
-        node("t_checks", "round_live", ["free_ends", "crest_8pct", "crest_12pct", "join_steps_gt_0p1",
+        node("t_checks", "round_live", ["free_ends", "crest_8pct", "crest_12pct", "crest_widened_8",
+                                        "crest_widened_12", "join_steps_gt_0p1",
                                         "junctions_over_2", "junctions_max", "differ", "pass", "fails"],
              after=["t_build"], validated=True),
         node("terrain_accept", "round_live", ["rules_pass", "decision", "reasons"], after=["t_checks"], validated=True),

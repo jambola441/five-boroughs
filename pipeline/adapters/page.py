@@ -295,7 +295,8 @@ def frames_ready(cfg):
                 continue
             for r in sorted(rows, key=lambda r: -r.get("mag", 0)):
                 lst = sites.setdefault(r.get("cls", "?"), [])
-                if len(lst) < f.get("per_class", 4):
+                seen = [q for l in sites.values() for q in l]
+                if len(lst) < f.get("per_class", 4) and not near(r, seen, 5):   # same site in two lists: once
                     lst.append({"from": sid, "x": r["x"], "z": r["z"], "mag": r.get("mag"), "rname": r.get("rname")})
     if sites:
         req["sites_by_class"] = sites
