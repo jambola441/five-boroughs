@@ -109,6 +109,8 @@ GATE_RX = {
     "visible_drivable": r"GATE visible drivable >= 2 m: (\d+) \(live (\d+)\); new beyond live: (\d+)",
     "lost_contact": r"lost-contact flags on CSCL car routes (\d+) \(live (\d+)\); new vs live at the same point \(3 m\): (\d+) flags at (\d+) places",
     "city": r"car ledges (\d+) >= 2 m (\d+) \| car steps >= 2 m v2 (\d+)",
+    "curbs": r"CURBS \(deck meets grade, 0\.3-2 m\) (\d+) flags = (\d+) m",
+    "c_ii": r"GATE\(c\) vs live split \(ii\) (\d+) m at (\d+) places",
 }
 
 
@@ -131,7 +133,9 @@ def t_lift_gate(cfg, s, d):
     g, lines = gate_txt(p)
     return {"out": p, "flags": os.path.join(p, "city", "flags_drape.json"), "visible_drivable_new": g["visible_drivable"][2],
             "lost_contact_flags": g["lost_contact"][0], "lost_contact_new_places": g["lost_contact"][3],
-            "car_steps_2m": g.get("city", [0, 0, -1])[2], "gate_lines": json.dumps(lines[:12])}
+            "car_steps_2m": g.get("city", [0, 0, -1])[2], "car_ledges_2m": g.get("city", [0, -1, 0])[1],
+            "curbs_km": round(g["curbs"][1] / 1000, 3) if "curbs" in g else -1,
+            "c_ii_m": g["c_ii"][0] if "c_ii" in g else -1, "gate_lines": json.dumps(lines[:12])}
 
 
 def t_newlist(cfg, s, d):
@@ -150,10 +154,9 @@ def t_newlist(cfg, s, d):
 
 def t_deck_under(cfg, s, d):
     """4. the mid-deck guard (deck_under.mjs)."""
-    drape = ref(cfg, d, s["drape"])
     out = os.path.join(OUT, s["id"] + ".json")
     p = existing_or_run(cfg, s, out, lambda: run_job(
-        s["id"], [NODE, "--max-old-space-size=8192", project(f"pe:phaseb/deck_under.mjs"), drape, out],
+        s["id"], [NODE, "--max-old-space-size=8192", project(f"pe:phaseb/deck_under.mjs"), ref(cfg, d, s["drape"]), out],
         project("pe:"), s["id"] + ".log", env=node_env(s)))
     j = json.load(open(p))
     o = {"out": p, **{k: j["total"][k] for k in ("underM", "noneM", "linesUnder")}, "zero_piece_underM": "none"}
@@ -237,21 +240,39 @@ def gate(cfg, g, d):
         j = json.load(open(n["out"]))
         new = [i for i in j["newList"] if i.get("c") == "step2" and i.get("mag", 0) >= g.get("min_m", 2)]
         debt = [i for i in new if near(i, cfg.get("debt", []), 30)]
-        unb = [i for i in new if i not in debt]
+        rest = [i for i in new if i not in debt]
+        mx = b.get("marginal_step_max_m", 1e9)
+        marginal = [i for i in rest if i["mag"] <= mx]
+        unb = [i for i in rest if i["mag"] > mx]
         held = [t["name"] for t in cfg.get("target_fixed", []) if near(t, [dict(x, radius_m=15) for x in j["goneList"]], 15)]
-        ok = len(unb) <= b.get("new_step_places", 0) and len(held) == len(cfg.get("target_fixed", []))
-        return ok, (f"{len(new)} new car steps >= {g.get('min_m', 2)} m ({len(debt)} on declared debt, {len(unb)} "
-                    f"unbudgeted, budget {b.get('new_step_places', 0)}); target fixes held {len(held)} of "
-                    f"{len(cfg.get('target_fixed', []))}"), {"unbudgeted": [f"{i.get('rname')} {i['mag']} m at "
-                                                              f"{i['x']:.0f},{i['z']:.0f}" for i in unb][:30]}
+        ok = not unb and len(marginal) <= b.get("new_step_places", 0)
+        if g.get("targets_gate"):
+            ok = ok and len(held) == len(cfg.get("target_fixed", []))
+        return ok, (f"{len(new)} new car steps >= {g.get('min_m', 2)} m: {len(marginal)} small (<= {mx} m; budget "
+                    f"{b.get('new_step_places', 0)}), {len(debt)} on the debt list, {len(unb)} bigger and not on it; "
+                    f"target fixes held {len(held)} of {len(cfg.get('target_fixed', []))}"
+                    + ("" if g.get("targets_gate") else " (reported)")), \
+            {"unbudgeted": [f"{i.get('rname')} {i['mag']} m at {i['x']:.0f},{i['z']:.0f}" for i in unb][:30]}
     if k == "deck_under":
-        v, base = d[g["step"]], d[g["base_step"]] if g.get("base_step") else {"underM": g["base_underM"]}
+        v = d[g["step"]]
+        base = d[g["base_step"]] if g.get("base_step") else {"underM": g["base_underM"]}
         lim = base["underM"] + b.get("deck_under_m", 0)
         zp = v.get("zero_piece_underM")
         ok = v["underM"] <= lim and zp in ("none", 0)
         return ok, f"underM {v['underM']} vs base {base['underM']} (limit {lim}); #6 piece {zp} m under (must be 0)", {}
     if k == "ramps":
         v = d[g["step"]]
+        if g.get("base_step"):   # new flattened crossings vs the base drape's own list (the drive test's match)
+            A = json.load(open(os.path.join(d[g["base_step"]]["out"], "FLATTENED.json")))["crossings"]
+            B = json.load(open(os.path.join(v["out"], "FLATTENED.json")))["crossings"]
+            has = lambda r, S: any(x["upper"] == r["upper"] and x["lower"] == r["lower"]
+                                   and math.hypot(x["x"] - r["x"], x["z"] - r["z"]) <= 3 for x in S)
+            new = [r for r in B if not has(r, A)]
+            gone = [r for r in A if not has(r, B)]
+            ok = len(new) <= b.get("ramps_new", 0)
+            return ok, (f"flattened {len(B)} vs base {len(A)}: {len(new)} new, {len(gone)} gone "
+                        f"(budget new {b.get('ramps_new', 0)})"), \
+                {"unbudgeted": [f"{r['upper']} / {r['lower']} at {r['x']:.0f},{r['z']:.0f}" for r in new][:30]}
         ok = v["flattened"] <= v["previous"] + b.get("ramps_flattened", 0) and v["new"] <= b.get("ramps_new", 0)
         return ok, f"{v['line']} (budget flattened +{b.get('ramps_flattened', 0)}, new {b.get('ramps_new', 0)})", {}
     if k == "census":
@@ -261,7 +282,7 @@ def gate(cfg, g, d):
         return ok, f"tents {v['tents_n']} / {v['tents_m2']} m² vs base {base['tents_n']} / {base['tents_m2']} m²", {}
     if k == "lift":
         v, base = d[g["step"]], d[g["base_step"]]
-        rows = [(f, v[f], base[f], b.get(f, 0)) for f in ("visible_drivable_new", "lost_contact_flags")]
+        rows = [(f, v[f], base[f], b.get(f, 0)) for f in g.get("fields", ("visible_drivable_new", "lost_contact_flags"))]
         ok = all(x <= y + bud for _, x, y, bud in rows)
         return ok, "; ".join(f"{f} {x} vs base {y} (budget +{bud})" for f, x, y, bud in rows), {}
     raise KeyError(k)

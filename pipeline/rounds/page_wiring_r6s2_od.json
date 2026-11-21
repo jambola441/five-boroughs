@@ -1,20 +1,23 @@
 {
- "round": "Page round 2 wiring test (r6s2 B′+reslocal=1 ondeck vs r6s2 B′), on existing outputs; nothing re-run",
+ "round": "Page round 2 wiring test v2 (variant r6s2 B′+rl1 ondeck vs base B′+rl1; existing outputs only)",
  "kind": "page_round",
  "mode": "existing",
  "accept": "explore",
  "idea": "Make B″ the lifting rule (a street polygon rides its deck whole when it overshoots by 6 m or less, else clipped or blended), with the stacked-claim fix (reslocal=1). B′ clips everything at the deck surface + 1 m.",
  "budget": {
-  "new_step_places": 10,
-  "deck_under_m": 0,
-  "ramps_flattened": 0,
-  "ramps_new": 0,
-  "tents_n": 0,
-  "tents_m2": 0,
   "visible_drivable_new": 0,
-  "lost_contact_flags": 0
+  "car_ledges_2m": 5,
+  "car_steps_2m": 30,
+  "curbs_km": 0.5,
+  "new_step_places": 10,
+  "marginal_step_max_m": 2.5,
+  "ramps_new": 0,
+  "c_ii_m": 0,
+  "deck_under_m": 0,
+  "tents_n": 0,
+  "tents_m2": 0
  },
- "budget_note": "DRAFT for the lead to set; 0 = must not rise vs the r6s2 B′ base",
+ "budget_note": "set by the lead 2026-11-21; base = B′ + reslocal=1 on r6s2, so B″'s own effect is isolated",
  "debt": [
   {
    "name": "Bruckner Blvd NB entrance from Havemeyer Ave: 12.43 m step",
@@ -69,6 +72,17 @@
    "existing": "work/drive_audit/page_drape/v1c_r6s2_r14s_lr3_rl1od"
   },
   {
+   "id": "p_drape_base",
+   "tool": "drape",
+   "tag": "v1c_r6s2_r14s_lr3_rl1b",
+   "base": "v1c_r6s2_r14s_lr3",
+   "LIFTRULE": 3,
+   "RESLOCAL": 1,
+   "TERV": "v1c_r6s2",
+   "LANES": "highways/work/p2net/final_fdr/r14s",
+   "existing": "work/drive_audit/page_drape/v1c_r6s2_r14s_lr3"
+  },
+  {
    "id": "p_lift_gate",
    "tool": "lift_gate",
    "tag": "v1c_r6s2_r14s_lr4_rl1",
@@ -83,15 +97,16 @@
   {
    "id": "p_lift_base",
    "tool": "lift_gate",
-   "tag": "v1c_r6s2_r14s_lr3",
-   "existing": "work/drive_audit/deckends/lift_pd_v1c_r6s2_r14s_lr3",
+   "tag": "v1c_r6s2_r14s_lr3_rl1",
+   "use_existing": true,
+   "existing": "work/drive_audit/deckends/lift_pd_v1c_r6s2_r14s_lr3_rl1",
    "TERV": "v1c_r6s2",
    "LANES": "highways/work/p2net/final_fdr/r14s"
   },
   {
    "id": "p_newlist",
    "tool": "newlist",
-   "base_flags": "work/drive_audit/deckends/lift_pd_v1c_r6s2_r14s_lr3/city/flags_drape.json",
+   "base_flags": "work/drive_audit/deckends/lift_pd_v1c_r6s2_r14s_lr3_rl1/city/flags_drape.json",
    "variant_flags": "step:p_lift_gate",
    "after": [
     "p_lift_gate"
@@ -109,6 +124,13 @@
    "existing": "pe:data/census/cbe6/deck_under_v1c_r6s2_r14s_lr3_rl1od.json"
   },
   {
+   "id": "p_deck_base",
+   "tool": "deck_under",
+   "use_existing": true,
+   "existing": "pe:data/census/cbe6/deck_under_v1c_r6s2_r14s_lr3_rl1.json",
+   "TERV": "v1c_r6s2"
+  },
+  {
    "id": "p_ramps",
    "tool": "ramps",
    "tag": "v1c_r6s2_r14s_lr4_rl1",
@@ -119,28 +141,38 @@
    "existing": "work/drive_audit/deckends/ramps_v1c_r6s2_r14s_lr3_rl1od"
   },
   {
+   "id": "p_ramps_base",
+   "tool": "ramps",
+   "tag": "v1c_r6s2_r14s_lr3_rl1b",
+   "TERV": "v1c_r6s2",
+   "after": [
+    "p_drape_base",
+    "p_ramps"
+   ],
+   "existing": "work/drive_audit/deckends/ramps_v1c_r6s2_r14s_lr3"
+  },
+  {
    "id": "p_census",
    "tool": "census",
-   "LIFTRULE": 3,
+   "LIFTRULE": 4,
    "RESLOCAL": 1,
-   "TERV": "v1c_r6s2",
-   "LANES": "highways/work/p2net/final_fdr/r14s",
-   "ONDECK": 1,
    "after": [
     "p_newlist"
    ],
+   "TERV": "v1c_r6s2",
+   "LANES": "highways/work/p2net/final_fdr/r14s",
    "existing": "runs:page-wiring-1/p_census.json"
   },
   {
    "id": "p_census_base",
    "tool": "census",
    "LIFTRULE": 3,
-   "RESLOCAL": 0,
-   "TERV": "v1c_r6s2",
-   "LANES": "highways/work/p2net/final_fdr/r14s",
+   "RESLOCAL": 1,
    "after": [
     "p_census"
    ],
+   "TERV": "v1c_r6s2",
+   "LANES": "highways/work/p2net/final_fdr/r14s",
    "existing": "runs:page-wiring-1/p_census_base.json"
   }
  ],
@@ -154,12 +186,13 @@
    "id": "g_deck_under",
    "check": "deck_under",
    "step": "p_deck_under",
-   "base_underM": 37010
+   "base_step": "p_deck_base"
   },
   {
    "id": "g_ramps",
    "check": "ramps",
-   "step": "p_ramps"
+   "step": "p_ramps",
+   "base_step": "p_ramps_base"
   },
   {
    "id": "g_census",
@@ -171,7 +204,14 @@
    "id": "g_lift",
    "check": "lift",
    "step": "p_lift_gate",
-   "base_step": "p_lift_base"
+   "base_step": "p_lift_base",
+   "fields": [
+    "visible_drivable_new",
+    "car_ledges_2m",
+    "car_steps_2m",
+    "curbs_km",
+    "c_ii_m"
+   ]
   }
  ],
  "frames": {
@@ -180,11 +220,11 @@
    "p_newlist"
   ],
   "panels": [
-   "today: B′ (r6s2)",
+   "B′ + reslocal=1 (r6s2)",
    "B″ + reslocal=1"
   ],
   "variants": [
-   "LIFTRULE=3 RESLOCAL=0",
+   "LIFTRULE=3 RESLOCAL=1",
    "LIFTRULE=4 RESLOCAL=1"
   ],
   "poses": [

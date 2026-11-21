@@ -141,7 +141,7 @@ def highway_tasks(cfg):
 
 PAGE_OUT = {"drape": ["out", "tiles_written", "tiles_total"],
             "lift_gate": ["out", "flags", "visible_drivable_new", "lost_contact_flags", "lost_contact_new_places",
-                          "car_steps_2m", "gate_lines"],
+                          "car_steps_2m", "car_ledges_2m", "curbs_km", "c_ii_m", "gate_lines"],
             "newlist": ["out", "new_places", "new_step2", "new_lost", "gone_places", "gone_step2", "gone_lost"],
             "deck_under": ["out", "underM", "noneM", "linesUnder", "zero_piece_underM"],
             "ramps": ["out", "flattened", "previous", "new", "gone", "rampgate", "line"],

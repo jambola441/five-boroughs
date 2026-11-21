@@ -1,0 +1,66 @@
+{
+ "round": "v1c_r6t2",
+ "prev": "v1c_r6s2",
+ "kind": "terrain_round_live",
+ "mode": "build",
+ "idea": "Small fix round on r6s2, no re-height: (1) join rule - a raised/ext piece starts at its source deck's end height and blends over max(5 m, step/8%), fixing the 5695631 flight fail; (2) R2 - streets crossing a v1b trench/bump/yard edit (i1, i7) that lowered the ground >1 m get a deck line at the pre-edit v1 height (E 174 St x3, Walton Ave). r6t2 adds: an R2 line end touching another deck line end takes that end height (join rule extended to R2 lines, blend max(5 m, step/8%)); if a line still adds a crest >=12% it is dropped from R2 (Walton Ave 902854863 keeps the existing P1 deck).",
+ "build_script": "p2/tools/r6t2_round.sh",
+ "expected_sha": null,
+ "prev_terrain": {
+  "free_ends": 399,
+  "junctions_over_2": 12,
+  "junctions_max": 2.86,
+  "crest_8pct": 23,
+  "crest_12pct": 8,
+  "crest_widened_ge8_near_end": 93,
+  "crest_widened_ge12_near_end": 68,
+  "join_steps_gt_0p1": 1
+ },
+ "planned_diff": {
+  "tiles": 0,
+  "water": 0,
+  "skirts": 0,
+  "decks": 5,
+  "deck_tiles": [
+   "x10_z-1",
+   "x10_z-2",
+   "x18_z-20",
+   "x11_z-18",
+   "x12_z-18"
+  ]
+ },
+ "prev_qa": {
+  "b_underM": 37010,
+  "b_noneM": 32872,
+  "b_linesUnder": 592,
+  "walls_onroad_m": 3876.9
+ },
+ "rules": {
+  "b": {
+   "tolerance": 0.01
+  },
+  "walls": {
+   "kind": "no_rise"
+  },
+  "flight": {
+   "max_cm_at_80": 5
+  }
+ },
+ "live_ramps_flattened": 347,
+ "lead_ok_crest": false,
+ "frame_pairs": {},
+ "coordinator": "agy:gemini-4-hydrogen-high",
+ "expected_effects": [
+  "join steps > 0.1 m: 1 -> 0",
+  "flight at piece 5695631 (9231.5, -9838.8): 11 cm -> <= 5 cm at 80 km/h",
+  "free ends (incl. fallback tiles) <= 399; junctions over 2 m <= 12",
+  "deck gap, gate (c) and ramp census: no rise vs r6s2"
+ ],
+ "known_gaps": [
+  "No frame pairs yet: the page editor renders frames at 5695631 and E 174 St / Walton Ave separately; Hydrogen review outside this graph for now.",
+  "Two R2 line ends sit 1.2 / 1.6 m off the ground where the OSM way ends; the free-ends and junction checks judge them.",
+  "Bundle verdict expected NOT shippable: lower-than-live 6,225 m (page claim fix not on) and on-road walls 3,877 m vs live 1,675 m (highways r14s)."
+ ],
+ "note": "Written by the lead 2026-11-21 after r6t (run r6t-1) stopped at terrain checks (junction 3.13 m at 5892,-8546 from R2 Walton Ave line; widened crest 12% 69 vs 68). v1c_r6t kept unfrozen as built.",
+ "frames_outside_graph": true
+}
