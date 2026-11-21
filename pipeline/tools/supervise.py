@@ -152,6 +152,10 @@ def sync_queue(run_dir):
                       {"request": os.path.join(run_dir, "frames_request.json")}, run_dir, priority=2)
     if hard:
         owner = STREAM_OWNER.get(cfg.get("kind"), "lead")
+        key = "+".join(hard)
+        for it in Dq.items():   # one open verdict per run: a newer set of stopped steps replaces the older item
+            if it["run"] == name and it["kind"] == "verdict" and it["status"] == "open" and it["step"] != key:
+                Dq.close(it, f"superseded: the run now stops at {', '.join(hard)}")
         Dq.raise_item(name, "+".join(hard), "verdict", owner,
                       f"{cfg.get('round', name)} stopped at {', '.join(hard)}: fix in a new round, reasons, debt, or hold?",
                       {k: {**res(k), "error": (T[k].get("error") or "")[:300]} for k in hard}, run_dir, priority=1)
