@@ -29,7 +29,7 @@ PE, DA = "pe:", f"{W}/drive_audit"
 NODE = "/opt/homebrew/bin/node"
 MIN_FREE_GB = 10
 IMG = (".jpg", ".jpeg", ".png")
-HYD_PARALLEL = 4   # Hydrogen calls at once
+HYD_PARALLEL = 8   # Hydrogen calls at once
 
 
 class Waiting(Exception):
@@ -146,7 +146,7 @@ def t_lift_gate(cfg, s, d):
            "DA_YE_DRAWN": "0", "DA_SCAN_DRAWN": "1"}
     p = existing_or_run(cfg, s, out, lambda: run_job(
         s["id"], ["./run_lift_gate.sh", project(f"{W}/terrain_study/p1/terrain/{s['TERV']}"), "pd_" + s["tag"], "--city"],
-        project(DA), s["id"] + ".log", env=env))
+        project(DA), s["id"] + ".log", env=env, cores=6))   # da_city.py --workers=6: shares the heavy-job limit
     g, lines = gate_txt(p)
     return {"out": p, "flags": os.path.join(p, "city", "flags_drape.json"), "visible_drivable_new": g["visible_drivable"][2],
             "lost_contact_flags": g["lost_contact"][0], "lost_contact_new_places": g["lost_contact"][3],

@@ -130,21 +130,85 @@ class Running(Exception):
     """The step's job is still running: the step reports not_started and is retried later."""
 
 
-def run_job(name, cmd, cwd, log, env=None, wait=None):
+# Heavy jobs share the machine across runs: a job started with cores=N (or named with a HEAVY prefix) starts only when the
+# heavy jobs already running (in any run) leave room under HEAVY_CORES and the load average leaves room for it;
+# otherwise the step reports "job running: waiting for a heavy-job slot" and the supervisor retries it each minute.
+HEAVY = {"p_lift_gate": 6}
+HEAVY_CORES = 12
+LOAD_SLACK = 4   # load average may exceed the core count by this much
+
+
+def _alive(pid):
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+
+
+def heavy_running(runs):
+    """[(run/job, cores)] of heavy jobs still running in any run under runs."""
+    import glob
+    out = []
+    for rec in glob.glob(os.path.join(runs, "*", "jobs", "*", "job.json")):
+        d = os.path.dirname(rec)
+        if os.path.exists(os.path.join(d, "rc")):
+            continue
+        try:
+            j = json.load(open(rec))
+        except (OSError, ValueError):
+            continue
+        if j.get("cores") and _alive(j["pid"]):
+            out.append((os.path.relpath(d, runs), j["cores"]))
+    return out
+
+
+def job_cores(name, cores=None):
+    return cores if cores is not None else next((c for pre, c in HEAVY.items() if name.startswith(pre)), 0)
+
+
+def heavy_slot(cores, runs, ncpu=None, load=None):
+    """None if a job using this many cores may start now, else why it must wait."""
+    if not cores:
+        return None
+    busy = heavy_running(runs)
+    used = sum(c for _, c in busy)
+    if used + cores > HEAVY_CORES:
+        return f"{used} of {HEAVY_CORES} heavy cores in use ({', '.join(n for n, _ in busy)})"
+    ncpu = ncpu or os.cpu_count() or 8
+    load = os.getloadavg()[0] if load is None else load
+    if load + cores > ncpu + LOAD_SLACK:
+        return f"load average {load:.1f} leaves no room for {cores} more cores on {ncpu}"
+    return None
+
+
+def run_job(name, cmd, cwd, log, env=None, wait=None, cores=None):
     """Run cmd as a detached job named name; return its exit code once it has finished, else raise Running.
     stdout+stderr go to OUT/log. A job that died without writing its exit code raises RuntimeError."""
     import time
     d = os.path.join(OUT, "jobs", name)
     rec, rcf = os.path.join(d, "job.json"), os.path.join(d, "rc")
     if not os.path.exists(rec):
+        import fcntl
+        runs = os.path.dirname(os.path.abspath(OUT))
+        lock = open(os.path.join(runs, ".heavy.lock"), "w")
+        fcntl.flock(lock, fcntl.LOCK_EX)   # check-and-start is atomic across runs
+        cores = job_cores(name, cores)
+        why = heavy_slot(cores, runs)
+        if why:
+            lock.close()
+            raise Running(f"job running: waiting for a heavy-job slot for {name}: {why}")
         os.makedirs(d, exist_ok=True)
         with open(os.path.join(OUT, log), "w") as f:
             p = subprocess.Popen(["/bin/sh", "-c", '"$@"; echo $? > "$JOB_RC.tmp" && mv "$JOB_RC.tmp" "$JOB_RC"',
                                   "job"] + list(cmd), cwd=cwd, stdout=f, stderr=subprocess.STDOUT,
                                  stdin=subprocess.DEVNULL, start_new_session=True,
                                  env={**os.environ, **(env or {}), "JOB_RC": rcf})
-        json.dump({"pid": p.pid, "cmd": [str(c) for c in cmd], "cwd": cwd, "log": log, "started": time.time()},
-                  open(rec, "w"))
+        json.dump({"pid": p.pid, "cmd": [str(c) for c in cmd], "cwd": cwd, "log": log, "started": time.time(),
+                   "cores": cores}, open(rec, "w"))
+        lock.close()
     j = json.load(open(rec))
     budget = max(0.0, JOB_WAIT - (time.time() - _CALL_START))   # whatever is left of this call's 90 s
     t_end = time.time() + (budget if wait is None else min(wait, budget))
