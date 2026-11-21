@@ -330,13 +330,22 @@ def gate(cfg, g, d):
         # the lead: slivers are defects. A sliver point the variant draws > 2 m above the base fails the round unless
         # it has a reason. Needs each row's `slivers` list [[x, z, h_variant, h_base], ...]; a sliver count with no
         # list can't be checked, so it fails closed.
-        spikes, unlisted = [], []
+        # the lead (revised): a spike (> 2 m above the base, or the base draws nothing) FAILS only if no continuous
+        # LiDAR layer lies within 1 m of its drawn height. Needs each entry's 5th element: the continuous LiDAR layer
+        # heights at the point. Without it the spike can't be checked: fails closed. Spikes on LiDAR are reported.
+        spikes, unlisted, on_lidar = [], [], []
         for r in rows:
             if r.get("sliver") and "slivers" not in r:
                 unlisted.append(r)
-            for x, z, h, hb in r.get("slivers") or []:   # hb None: the base draws nothing there -> counts as a spike
-                if (hb is None or h - hb > 2) and not near({"x": x, "z": z}, [dict(q, radius_m=5) for q in rs], 5):
-                    spikes.append((r, x, z, h, hb))
+            for e in r.get("slivers") or []:
+                x, z, h, hb = e[:4]
+                if not (hb is None or h - hb > 2):
+                    continue
+                cont = e[4] if len(e) > 4 else None
+                if cont is not None and any(abs(c - h) <= 1.0 for c in cont):
+                    on_lidar.append((r, x, z, h, hb))
+                elif not near({"x": x, "z": z}, [dict(q, radius_m=5) for q in rs], 5):
+                    spikes.append((r, x, z, h, hb, cont))
         by = {}
         for r in rows: by[r.get("cls", "?")] = by.get(r.get("cls", "?"), 0) + 1
         # the lead (option c): a PASS on only 1-2 raised points counts as D for the cap; a 1-2-point FAIL stays a FAIL
@@ -346,7 +355,8 @@ def gate(cfg, g, d):
         d_share = by_cap.get("D", 0) / raised if raised else 0.0
         unsure = d_share > 0.2   # the lead: too much of the rule unverified -> uncertain, blocks
         return (not bad and not unsure and not spikes and not unlisted), (("UNCERTAIN (blocks): " if unsure else "")
-                + (f"{len(spikes)} new sliver spikes > 2 m without a reason; " if spikes else "")
+                + (f"{len(spikes)} sliver spikes > 2 m off LiDAR (or LiDAR not logged) without a reason; " if spikes else "")
+                + (f"{len(on_lidar)} sliver spikes on LiDAR (reported, not failed); " if on_lidar else "")
                 + (f"{len(unlisted)} claims with slivers but no sliver locations logged (fails closed); " if unlisted else "")
                 + f"{len(rows)} kept claims: {by}; {len(fails)} FAIL, {len(fails) - len(bad)} of them with a reason; "
                 f"D for the cap {by_cap.get('D', 0)} of {raised} that raised anything = {d_share:.0%} (cap 20 %; "
@@ -359,7 +369,9 @@ def gate(cfg, g, d):
                              f"LiDAR" for r in bad]
                             + [(f"sliver spike {h - hb:.1f} m" if hb is not None else "sliver where the base draws nothing")
                                + f" at {x:.1f},{z:.1f} (claim at {r['c'][0]:.0f},{r['c'][1]:.0f}; variant {h:.1f} m, base "
-                               + (f"{hb:.1f} m)" if hb is not None else "none)") for r, x, z, h, hb in spikes])[:40]}
+                               + (f"{hb:.1f} m" if hb is not None else "none")
+                               + (f"; LiDAR layers {cont})" if cont is not None else "; LiDAR not logged, fails closed)")
+                               for r, x, z, h, hb, cont in spikes])[:40]}
     if k == "tent_diff":   # new tents anywhere the variant wrote a tile
         j = json.load(open(d[g["step"]]["out"]))
         t, lim = j["total"], b.get("tents_new", 0)
