@@ -101,6 +101,9 @@ def run_view(name):
         headline = ("done", "Finished")
     else:
         headline = ("pending", "Not started")
+    ret = os.path.join(d, "RETIRED")
+    if os.path.exists(ret):
+        headline = ("retired", "Retired: " + open(ret).read().strip())
     return {"name": name, "round": cfg.get("round", name), "kind": KIND.get(cfg.get("kind"), "Shadow round"),
             "mode": cfg.get("mode", "live"), "updated": os.path.getmtime(os.path.join(d, "run", "state.json")),
             "started": os.path.getmtime(os.path.join(d, "round.json")),

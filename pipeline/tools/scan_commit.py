@@ -2,7 +2,7 @@
 """Pre-commit scan for the public five-boroughs repo. Exit 1 (and list why) unless EVERY staged file passes.
 
 Layer 1, ALLOWLIST: a commit may only add or change these paths, of these types:
-  .gitignore, README.md, pipeline/README.md, pipeline/build_round.py,
+  .gitignore, README.md, pipeline/README.md, pipeline/POLICY.md, pipeline/build_round.py,
   pipeline/adapters/*.py, pipeline/prompts/*.md, pipeline/rounds/*.json,
   pipeline/tools/*.py | *.sh | *.html | page_code_hashes.json
 Anything else (data, page code, anything from the team's work folders, other types, files in subfolders) fails.
@@ -14,7 +14,7 @@ usage: python3 -I pipeline/tools/scan_commit.py            (scans `git diff --ca
 import fnmatch, hashlib, json, os, re, subprocess, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ALLOW = [".gitignore", "README.md", "pipeline/README.md", "pipeline/build_round.py",
+ALLOW = [".gitignore", "README.md", "pipeline/README.md", "pipeline/POLICY.md", "pipeline/build_round.py",
          "pipeline/adapters/*.py", "pipeline/prompts/*.md", "pipeline/rounds/*.json",
          "pipeline/tools/*.py", "pipeline/tools/*.sh", "pipeline/tools/*.html", "pipeline/tools/page_code_hashes.json"]
 SELF = {"pipeline/tools/scan_commit.py", "pipeline/tools/page_code_hashes.json"}   # hold the patterns/hashes

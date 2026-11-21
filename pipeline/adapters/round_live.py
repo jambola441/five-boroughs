@@ -246,8 +246,12 @@ def q_rule(name, n, cfg):
         rule = R.get("b")
         if not rule: return None, "the lead has not set a pass rule for gate (b) yet"
         P, tol = cfg["prev_qa"], rule.get("tolerance", 0.01)
+        prev_du = project(f"{DA}/deckends/lift_pd_{cfg.get('prev', '')}_r14s_lr3/deck_under.json")
         if cfg.get("prev_qa_authoritative"):   # the lead set the baseline in the round file: it wins over GATE.json's
             pu, pn, pl = P["b_underM"], P["b_noneM"], P["b_linesUnder"]
+        elif os.path.exists(prev_du):          # POLICY 1: the previous round's own measured deck gap
+            T = json.load(open(prev_du))["total"]
+            pu, pn, pl = T["underM"], T["noneM"], T["linesUnder"]
         else:
             pu = x.get("prev_underM", P["b_underM"])
             pn = x.get("prev_noneM", P["b_noneM"])

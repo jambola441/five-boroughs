@@ -76,7 +76,7 @@ const C = {done:"var(--done)", running:"var(--run)", waiting:"var(--wait)", fail
 const WORD = {done:"done", running:"running", waiting:"waiting", failed:"failed", rejected:"rejected",
               uncertain:"uncertain", pending:"not yet", cancelled:"cancelled"};
 const PILL = {running:["Running","var(--run)"], waiting:["Waiting on people","var(--wait)"], stopped:["Stopped","var(--fail)"],
-              done:["Finished","var(--done)"], pending:["Not started","var(--pend)"]};
+              done:["Finished","var(--done)"], pending:["Not started","var(--pend)"], retired:["Retired","var(--pend)"]};
 let data = null, view = "active", sel = {}, lastAt = 0;
 const LOGS = {};
 const el = (t, cls, txt) => { const e = document.createElement(t); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
@@ -185,11 +185,11 @@ function render(){
   requestAnimationFrame(() => { window.scrollTo(0, y); m.style.minHeight = ""; });
   if (!data) return;
   const now = Date.now()/1000;
-  const isActive = r => r.status === "running" || r.status === "waiting" || (now - r.updated) < 3*3600;
+  const isActive = r => r.status !== "retired" && (r.status === "running" || r.status === "waiting" || (now - r.updated) < 3*3600);
   const runs = data.runs.filter(r => !r.name.includes("plan-check"));
   const shown = view === "active" ? runs.filter(isActive) : runs;
   if (!shown.length){ m.append(el("div","empty","No active runs. Switch to All runs.")); return; }
-  const order = {running:0, waiting:1, stopped:2, pending:3, done:4};
+  const order = {running:0, waiting:1, stopped:2, pending:3, done:4, retired:5};
   shown.sort((a, b) => (order[a.status]-order[b.status]) || ((b.started||0)-(a.started||0))).forEach(r => m.append(card(r)));
 }
 

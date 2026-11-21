@@ -274,6 +274,16 @@ TOOLS = {"drape": t_drape, "lift_gate": t_lift_gate, "newlist": t_newlist, "deck
 
 # ---------- gates (computed in code; budgets from the round file, default 0 = must not rise) ----------
 
+def policy_debt(entry):
+    """A standing policy (POLICY.md) adds a debt entry: recorded in this run's round.json (debt + changes), once."""
+    rp = os.path.join(OUT, "round.json")
+    r = json.load(open(rp))
+    if not any(e.get("name") == entry["name"] for e in r.get("debt", [])):
+        r.setdefault("debt", []).append(entry)
+        r.setdefault("changes", []).append(datetime.date.today().isoformat() + ": " + entry["name"])
+        json.dump(r, open(rp, "w"), indent=1, ensure_ascii=False)
+
+
 def near(p, pts, r):
     return any(math.hypot(p["x"] - q["x"], p["z"] - q["z"]) <= q.get("radius_m", r) for q in pts)
 
@@ -378,6 +388,15 @@ def gate(cfg, g, d):
         j = json.load(open(d[g["step"]]["out"]))
         t, lim = j["total"], b.get("tents_new", 0)
         new = [(r["tile"], w) for r in j["rows"] for w in r.get("new", [])]
+        # POLICY 2: small growth at existing tent sites (<= 2 tents, <= 1 m², only in tiles that had tents) -> debt
+        if t["n_new"] > lim and t["n_new"] - lim <= 2 and t["m2_new"] <= 1.0 + 1e-6 and all(
+                r["n_base"] > 0 for r in j["rows"] if r["n_var"] > r["n_base"]):
+            sites = [r["tile"] for r in j["rows"] if r["n_var"] > r["n_base"]]
+            policy_debt({"name": f"policy 2: tents grow at existing sites {sites} (+{t['n_new']}, +{t['m2_new']} m²)",
+                         "tents_n": t["n_new"], "tents_m2": t["m2_new"], "owner": "page: tents class",
+                         "pay_back": "with the tents class fix", "added_by": "policy 2 (POLICY.md)"})
+            return True, (f"tents {t['n_var']} vs base {t['n_base']}: {t['n_new']} new, {t['m2_new']} m², all at existing "
+                          f"tent sites {sites}: on the debt list by policy 2"), {"unbudgeted": [f"tent {w[2]} m tall, {w[3]} m² at {w[0]},{w[1]} ({tile})" for tile, w in new][:40]}
         return t["n_new"] <= lim, (f"tents {t['n_var']} vs base {t['n_base']}: {t['n_new']} new, {t['m2_new']} m² "
                                    f"(limit +{lim}); {t.get('tiles_changed', '?')} of {t.get('tiles_written', '?')} written "
                                    f"tiles differ"), \
