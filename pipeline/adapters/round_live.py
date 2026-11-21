@@ -246,9 +246,12 @@ def q_rule(name, n, cfg):
         rule = R.get("b")
         if not rule: return None, "the lead has not set a pass rule for gate (b) yet"
         P, tol = cfg["prev_qa"], rule.get("tolerance", 0.01)
-        pu = x.get("prev_underM", P["b_underM"])
-        pn = x.get("prev_noneM", P["b_noneM"])
-        pl = x.get("prev_linesUnder", P["b_linesUnder"])
+        if cfg.get("prev_qa_authoritative"):   # the lead set the baseline in the round file: it wins over GATE.json's
+            pu, pn, pl = P["b_underM"], P["b_noneM"], P["b_linesUnder"]
+        else:
+            pu = x.get("prev_underM", P["b_underM"])
+            pn = x.get("prev_noneM", P["b_noneM"])
+            pl = x.get("prev_linesUnder", P["b_linesUnder"])
         ok = x["underM"] <= pu * (1 + tol) and x["linesUnder"] <= pl and x["noneM"] <= pn * (1 + tol)
         return ok, f"underM {x['underM']} vs {pu}; noneM {x['noneM']} vs {pn}; linesUnder {x['linesUnder']} vs {pl} (+{tol:.0%})"
     if name == "walls":

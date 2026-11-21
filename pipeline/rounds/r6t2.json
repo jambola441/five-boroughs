@@ -65,5 +65,6 @@
  "frames_outside_graph": true,
  "changes": [
   "2026-11-21: prev_qa deck gap corrected by the lead to r6s2's own deck_under base (was 37010/32872/592, r6r's numbers)"
- ]
+ ],
+ "prev_qa_authoritative": true
 }
