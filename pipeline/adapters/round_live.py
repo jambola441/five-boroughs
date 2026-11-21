@@ -252,8 +252,11 @@ def q_rule(name, n, cfg):
             pu = x.get("prev_underM", P["b_underM"])
             pn = x.get("prev_noneM", P["b_noneM"])
             pl = x.get("prev_linesUnder", P["b_linesUnder"])
-        ok = x["underM"] <= pu * (1 + tol) and x["linesUnder"] <= pl and x["noneM"] <= pn * (1 + tol)
-        return ok, f"underM {x['underM']} vs {pu}; noneM {x['noneM']} vs {pn}; linesUnder {x['linesUnder']} vs {pl} (+{tol:.0%})"
+        debt = cfg.get("qa_debt", [])   # deck-gap lines the lead put on the debt list
+        dl, dm = sum(e.get("linesUnder", 0) for e in debt), sum(e.get("underM", 0) for e in debt)
+        ok = (x["underM"] - dm <= pu * (1 + tol) and x["linesUnder"] - dl <= pl and x["noneM"] <= pn * (1 + tol))
+        return ok, (f"underM {x['underM']} vs {pu}; noneM {x['noneM']} vs {pn}; linesUnder {x['linesUnder']} vs {pl} "
+                    f"(+{tol:.0%})" + (f"; on the debt list: {dl} line(s), {dm} m" if debt else ""))
     if name == "walls":
         # Lead rule: terrain rounds = no rise vs the previous round on the same highway build;
         # highway rounds = on-road metres <= live's.
