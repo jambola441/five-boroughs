@@ -190,8 +190,11 @@ def main():
             ok = w["on_road_m"] == 0 and a["on_road_m"] <= lim and (
                 not wa.get("unreasoned_gate", False) or a.get("on_road_unreasoned_triangles", 0) == 0)
             det = (f"new on-road walls {w['on_road_m']} m (must be 0); absolute on-road {a['on_road_m']} m (max {lim}, "
-                   f"live's); {a['on_road_triangles']} triangles, unreasoned {a.get('on_road_unreasoned_triangles', 'n/a')} "
-                   f"(reported)")
+                   f"live's); {a['on_road_triangles']} triangles (reported); unreasoned "
+                   f"{a.get('on_road_unreasoned_triangles', 'n/a')}" + (" (must be 0)" if wa.get("unreasoned_gate") else "")
+                   + (f"; step faces ('{a.get('step_face_class', 'overlapping decks at different heights')}') "
+                      f"{a['on_road_step_face_triangles']} triangles / {a.get('on_road_step_face_m', '?')} m, reasoned by class"
+                      if "on_road_step_face_triangles" in a else ""))
         else:
             lim = cfg.get("walls_abs_max_triangles", 620)
             ok = w["on_road_m"] == 0 and a["on_road_triangles"] <= lim and a.get("on_road_unreasoned_triangles", 0) == 0
