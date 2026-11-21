@@ -58,9 +58,16 @@ def ref(cfg, d, v):
     """A path in the round file: 'step:<id>' = that step's output file; else a project or runs: path."""
     if v.startswith("step:"):
         sid = v[len("step:"):]
-        if sid not in d:
-            raise Waiting(f"needs {sid} first")
-        return d[sid]["out"]
+        if sid in d:
+            return d[sid]["out"]
+        # a finished step this one doesn't depend on in the plan: read its output from the run state
+        try:
+            t = json.load(open(os.path.join(OUT, "run", "state.json")))["tasks"][sid]
+            if t.get("status") == "verified" and (t.get("result") or {}).get("out"):
+                return t["result"]["out"]
+        except (OSError, ValueError, KeyError):
+            pass
+        raise Waiting(f"needs {sid} first")
     return project(v)
 
 

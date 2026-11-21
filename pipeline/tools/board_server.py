@@ -159,6 +159,15 @@ class H(BaseHTTPRequestHandler):
             return self.send(200, open(PAGE, encoding="utf-8").read(), "text/html; charset=utf-8")
         if u.path == "/api/runs":
             return self.send(200, json.dumps({"at": time.time(), "runs": all_runs()}), "application/json")
+        if u.path == "/api/queue":   # the decision queue: open items, per owner
+            import decisions as Dq
+            os.environ.setdefault("PIPELINE_RUNS", RUNS)
+            Dq.Q = os.path.join(RUNS, "_queue")
+            rows = [{k: it.get(k) for k in ("id", "run", "kind", "owner", "question", "choices", "raised_at", "priority")}
+                    for it in Dq.items() if it["status"] == "open"]
+            rows.sort(key=lambda it: (it["priority"], it["raised_at"]))
+            return self.send(200, json.dumps({"items": [{**r, "question": scrub(r["question"])} for r in rows]}),
+                             "application/json")
         if u.path == "/api/log":
             q = parse_qs(u.query)
             return self.send(200, json.dumps({"text": log_tail(q.get("run", [""])[0], q.get("step", [""])[0])}),

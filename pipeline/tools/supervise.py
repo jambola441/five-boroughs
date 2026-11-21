@@ -16,6 +16,7 @@ import subprocess
 import sys
 import time
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 RUNS = os.environ["PIPELINE_RUNS"]
 ROOT = os.environ["NYC_ROOT"]
 PE = os.environ.get("PE_ROOT", "")
@@ -123,8 +124,86 @@ def report_changes():
     json.dump(new, open(path, "w"), indent=0)
 
 
+STREAM_OWNER = {"page_round": "page-coordinator", "terrain_round_live": "lead", "highway_round": "macmini"}
+
+
+def sync_queue(run_dir):
+    """POLICY.md's pull queue: raise what this run waits on, apply answers, close what cleared."""
+    import decisions as Dq
+    name = os.path.basename(run_dir)
+    st = json.load(open(os.path.join(run_dir, "run", "state.json")))
+    cfg = json.load(open(os.path.join(run_dir, "round.json")))
+    T = st["tasks"]
+    res = lambda k: {a: str(b)[:600] for a, b in ((T.get(k) or {}).get("result") or {}).items() if a not in ("out", "rows")}
+    hard = sorted(k for k, t in T.items() if t.get("status") in ("failed", "uncertain")
+                  and not any(w in (t.get("error") or "") for w in ("job running", "awaiting", "GB free", "deadline")))
+    lead_wait = "lead_gate" in T and "awaiting lead approval" in (T["lead_gate"].get("error") or "")
+    fr = (cfg.get("frames") or {}).get("folder")
+    frames_wait = ("frames_ready" in T and "awaiting frames" in (T["frames_ready"].get("error") or "")
+                   and not (fr and os.path.exists(os.path.join(resolve(fr), "READY"))))
+    if lead_wait and not os.path.exists(os.path.join(run_dir, "approval.json")):
+        acc = next((k for k in ("page_accept", "qa_accept", "highway_accept", "explore_accept") if k in T), None)
+        Dq.raise_item(name, "lead_gate", "approval", "lead", f"Approve {cfg.get('round', name)}?",
+                      {"accept": res(acc) if acc else {}, "debt": cfg.get("debt", []) + cfg.get("qa_debt", []),
+                       "changes": cfg.get("changes", [])}, run_dir, priority=1)
+    if frames_wait:
+        Dq.raise_item(name, "frames_ready", "frames", "page-editor",
+                      f"Render the frames for {cfg.get('round', name)} into {fr}, then drop READY",
+                      {"request": os.path.join(run_dir, "frames_request.json")}, run_dir, priority=2)
+    if hard:
+        owner = STREAM_OWNER.get(cfg.get("kind"), "lead")
+        Dq.raise_item(name, "+".join(hard), "verdict", owner,
+                      f"{cfg.get('round', name)} stopped at {', '.join(hard)}: fix in a new round, reasons, debt, or hold?",
+                      {k: {**res(k), "error": (T[k].get("error") or "")[:300]} for k in hard}, run_dir, priority=1)
+    for it in Dq.items():
+        if it["run"] != name or it["status"] not in ("open", "answered"):
+            continue
+        k, steps = it["kind"], it["step"].split("+")
+        if it["status"] == "open":   # cleared on its own?
+            if k == "approval" and T.get("lead_gate", {}).get("status") == "verified":
+                Dq.close(it, "the lead gate passed")
+            elif k == "frames" and fr and os.path.exists(os.path.join(resolve(fr), "READY")):
+                Dq.close(it, "frames READY")
+            elif k == "verdict" and not any(T.get(x, {}).get("status") in ("failed", "uncertain") for x in steps):
+                Dq.close(it, "the stopped steps passed (e.g. after reasons were added)")
+            continue
+        if it.get("applied"):
+            continue
+        if it["version"] != Dq.version(run_dir):   # never apply an answer to a round that changed under it
+            it["status"], it["closed_why"] = "stale", "the round changed after the item was raised"
+            Dq.save(it)
+            event(name, "queue", item=it["id"], what="stale")
+            continue
+        a = it["answer"]
+        note = f"{a['by']}: {a.get('note', '')}".strip()
+        if k == "approval" and a["choice"] == "approve":
+            json.dump({"decision": "approve", "by": a["by"], "note": a.get("note", ""), "via": it["id"]},
+                      open(os.path.join(run_dir, "approval.json"), "w"))
+        elif (k == "approval" and a["choice"] == "reject") or (k == "verdict" and a["choice"] == "fix"):
+            open(os.path.join(run_dir, "RETIRED"), "w").write(f"{a['choice']} via the decision queue ({note})\n")
+        elif k == "verdict" and a["choice"] == "debt":
+            Dq.raise_item(name, it["step"], "debt", "lead", f"Put {cfg.get('round', name)}'s stop at {it['step']} "
+                          f"on the debt list? ({note})", {**it["evidence"], "request": note}, run_dir, priority=1)
+        elif k == "debt" and a["choice"] == "approve":
+            Dq.raise_item(name, it["step"], "task", "pipeline", f"Wire the lead's debt for {name} at {it['step']}",
+                          {**it["evidence"], "lead": note}, run_dir, priority=1)
+        it["applied"] = time.strftime("%H:%M:%S")
+        if k != "approval":
+            it["status"], it["closed_why"] = "closed", f"applied: {a['choice']}"
+        Dq.save(it)
+        event(name, "queue", item=it["id"], applied=a["choice"], by=a["by"])
+
+
 def tick():
     report_changes()
+    for run_dir in sorted(glob.glob(os.path.join(RUNS, "*"))):
+        if (os.path.basename(run_dir).startswith("_") or os.path.exists(os.path.join(run_dir, "RETIRED"))
+                or not os.path.exists(os.path.join(run_dir, "run", "state.json"))):
+            continue
+        try:
+            sync_queue(run_dir)
+        except (OSError, ValueError, KeyError) as e:
+            event(os.path.basename(run_dir), "error", error=f"queue: {type(e).__name__}: {e}"[:300])
     for run_dir in sorted(glob.glob(os.path.join(RUNS, "*"))):
         name = os.path.basename(run_dir)
         if (name.startswith("_") or not os.path.exists(os.path.join(run_dir, "round.json"))

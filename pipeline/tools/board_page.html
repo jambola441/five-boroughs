@@ -56,6 +56,11 @@ padding:5px 10px 5px 13px;cursor:pointer;font-size:12.5px;line-height:1.3}
 pre{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px;font-size:11.5px;max-height:260px;overflow:auto;white-space:pre-wrap;margin:6px 0 0}
 .empty{color:var(--mute);padding:40px;text-align:center}
 .old summary{cursor:pointer;color:var(--mute);margin:4px 0}
+.qcard{max-width:1500px;margin:16px auto 0;width:calc(100% - 40px);border-left:5px solid var(--wait)}
+.qcard h2{font-size:15px;margin:0 0 8px}
+.qowner{margin:8px 0 2px;font-weight:600;font-size:13px}
+.qitem{font-size:12.5px;padding:3px 0;border-top:1px solid var(--line)}
+.qitem code{font-size:11px;color:var(--mute)}
 </style>
 </head>
 <body>
@@ -69,6 +74,7 @@ pre{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:
   </div>
   <div class="tabs"><button id="t-active" class="on">Active</button><button id="t-all">All runs</button></div>
 </header>
+<section id="queue" class="card qcard" hidden></section>
 <main id="main"><div class="empty">Loading…</div></main>
 <script>
 const C = {done:"var(--done)", running:"var(--run)", waiting:"var(--wait)", failed:"var(--fail)", rejected:"var(--fail)",
@@ -193,9 +199,26 @@ function render(){
   shown.sort((a, b) => (order[a.status]-order[b.status]) || ((b.started||0)-(a.started||0))).forEach(r => m.append(card(r)));
 }
 
+function renderQueue(q){
+  const box = document.getElementById("queue"); box.replaceChildren();
+  if (!q || !q.items.length){ box.hidden = true; return; }
+  box.hidden = false;
+  box.append(el("h2",null,`Waiting on people: ${q.items.length}`));
+  const by = {}; q.items.forEach(it => (by[it.owner] ||= []).push(it));
+  for (const [owner, list] of Object.entries(by)){
+    box.append(el("div","qowner",`${owner} (${list.length})`));
+    for (const it of list){
+      const d = el("div","qitem"); d.append(el("span",null,`${it.kind}: ${it.question} `));
+      d.append(el("code",null,`decisions.py answer ${it.id} ${(it.choices||[]).join("|") || "(closes by itself)"}`));
+      box.append(d);
+    }
+  }
+}
+
 async function poll(){
   try { const r = await fetch("/api/runs", {cache:"no-store"}); data = await r.json(); lastAt = Date.now(); render(); }
   catch(e) {}
+  try { const q = await fetch("/api/queue", {cache:"no-store"}); renderQueue(await q.json()); } catch(e) {}
   setTimeout(poll, 5000);
 }
 setInterval(() => { const s = (Date.now()-lastAt)/1000, d = document.getElementById("dot");
