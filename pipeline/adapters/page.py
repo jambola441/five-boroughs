@@ -253,7 +253,8 @@ def t_kept_lidar(cfg, s, d):
         onk = {key(e) for e in load(on) if e["loser"].get("whole")}
         kept = [e for e in load(off) if e["loser"].get("whole") and key(e) not in onk]
         lst = os.path.join(OUT, s["id"] + "_list.json")
-        json.dump({"newList": [{"c": "step2", "x": e["loser"]["c"][0], "z": e["loser"]["c"][1], "mag": 0.0,
+        at = lambda e: e["loser"].get("p") or e["loser"]["c"]   # a point on the kept claim if logged, else its centroid
+        json.dump({"newList": [{"c": "step2", "x": at(e)[0], "z": at(e)[1], "mag": 0.0,
                                 "rname": "kept claim", "score": e["loser"]["score"]} for e in kept], "goneList": []},
                   open(lst, "w"))
         out = os.path.join(OUT, s["id"] + ".json")
