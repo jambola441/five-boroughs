@@ -236,9 +236,39 @@ def t_census(cfg, s, d):
     return o
 
 
+def t_kept_lidar(cfg, s, d):
+    """The lead's check for a claim-keeping rule: the claims the variant KEEPS (rule-2 whole losses logged with the rule
+    off that are gone with it on, matched on both polygons' centroids) are checked against LiDAR with the page editor's
+    lidar_restore_check.py on the variant drape. Each kept claim goes in as a zero-height site at its polygon centroid,
+    so class A/B = a continuous LiDAR layer at the drawn (lifted) height there."""
+    if cfg["mode"] == "existing" and "existing" in s:
+        p = project(s["existing"])
+        if not os.path.exists(p): raise Waiting(f"awaiting {s['id']} output (dry run)")
+    else:
+        off, on = (os.path.splitext(d[k]["out"])[0] + "_rs.jsonl" for k in (s["base_census"], s["census"]))
+        if not (os.path.exists(off) and os.path.exists(on)):
+            raise RuntimeError("rule-2 event logs missing (census_rs steps must run with rs_events)")
+        key = lambda e: (tuple(e["loser"]["c"]), tuple(e["winner"]["c"]))
+        load = lambda f: [json.loads(l) for l in open(f) if l.strip()]
+        onk = {key(e) for e in load(on) if e["loser"].get("whole")}
+        kept = [e for e in load(off) if e["loser"].get("whole") and key(e) not in onk]
+        lst = os.path.join(OUT, s["id"] + "_list.json")
+        json.dump({"newList": [{"c": "step2", "x": e["loser"]["c"][0], "z": e["loser"]["c"][1], "mag": 0.0,
+                                "rname": "kept claim", "score": e["loser"]["score"]} for e in kept], "goneList": []},
+                  open(lst, "w"))
+        out = os.path.join(OUT, s["id"] + ".json")
+        drape = ref(cfg, d, s["drape"])
+        rc = run_job(s["id"], [py(), "-I", project("pe:phaseb/lidar_restore_check.py"), lst, drape, out], project("pe:"),
+                     s["id"] + ".log")
+        if rc != 0: raise RuntimeError(f"{s['id']} exited {rc}; see {s['id']}.log")
+        p = out
+    j = json.load(open(p))
+    return {"out": p, "kept": len(j["rows"]), "counts": json.dumps(j["counts"])}
+
+
 TOOLS = {"drape": t_drape, "lift_gate": t_lift_gate, "newlist": t_newlist, "deck_under": t_deck_under,
          "ramps": t_ramps, "trace": t_trace, "lidar": t_lidar, "census": t_census,
-         "census_rs": lambda cfg, s, d: t_census(cfg, {**s, "rs_events": True}, d)}
+         "census_rs": lambda cfg, s, d: t_census(cfg, {**s, "rs_events": True}, d), "kept_lidar": t_kept_lidar}
 
 
 # ---------- gates (computed in code; budgets from the round file, default 0 = must not rise) ----------
@@ -291,6 +321,15 @@ def gate(cfg, g, d):
                 {"unbudgeted": [f"{r['upper']} / {r['lower']} at {r['x']:.0f},{r['z']:.0f}" for r in new][:30]}
         ok = v["flattened"] <= v["previous"] + b.get("ramps_flattened", 0) and v["new"] <= b.get("ramps_new", 0)
         return ok, f"{v['line']} (budget flattened +{b.get('ramps_flattened', 0)}, new {b.get('ramps_new', 0)})", {}
+    if k == "kept_lidar":   # every kept claim: LiDAR at its lifted height (A/B), or a reason on file
+        rows = json.load(open(d[g["step"]]["out"]))["rows"]
+        rs = json.load(open(project(cfg["kept_reasons"]))) if cfg.get("kept_reasons") else []
+        bad = [r for r in rows if r.get("cls") not in ("A", "B") and not near(r, [dict(q, radius_m=5) for q in rs], 5)]
+        by = {}
+        for r in rows: by[r.get("cls", "?")] = by.get(r.get("cls", "?"), 0) + 1
+        return not bad, (f"{len(rows)} kept claims: LiDAR classes {by}; {len(bad)} with no LiDAR layer at their lifted "
+                         f"height and no reason"), {"unbudgeted": [f"{r.get('cls')} at {r['x']:.0f},{r['z']:.0f} "
+                                                               f"({r.get('why', 'LiDAR elsewhere')})" for r in bad][:30]}
     if k == "census":
         v, base = d[g["step"]], d[g["base_step"]]
         ok = (v["tents_n"] <= base["tents_n"] + b.get("tents_n", 0)
@@ -464,7 +503,8 @@ def page_accept(req, cfg, d):
     rules_pass = all(v.get("pass") == "true" for v in gates.values())
     expired = bool(cfg.get("expires")) and datetime.date.today() > datetime.date.fromisoformat(cfg["expires"])
     rules_pass = rules_pass and not expired
-    brief = {k: cfg[k] for k in ("idea", "question", "budget", "debt", "target_fixed", "expires") if k in cfg}
+    brief = {k: cfg[k] for k in ("idea", "question", "success_measure", "budget", "debt", "target_fixed", "expires")
+             if k in cfg}
     if (cfg.get("frames") or {}).get("unreadable_note"):
         brief["frames_note"] = cfg["frames"]["unreadable_note"]
     ev = {k: {kk: vv for kk, vv in v.items() if kk not in ("out", "rows")} for k, v in d.items()}   # no local paths

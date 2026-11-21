@@ -152,6 +152,7 @@ PAGE_OUT = {"drape": ["out", "tiles_written", "tiles_total"],
             "ramps": ["out", "flattened", "previous", "new", "gone", "rampgate", "line"],
             "trace": ["out", "sites", "counts"], "lidar": ["out", "sites", "counts", "classes"],
             "census": ["out", "tents_n", "tents_m2", "overflow_polys"],
+            "kept_lidar": ["out", "kept", "counts"],
             "census_rs": ["out", "tents_n", "tents_m2", "overflow_polys", "rs_whole_losses", "rs_keep_test"]}
 
 

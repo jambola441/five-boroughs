@@ -11,9 +11,10 @@
   "deck_under_m": 0,
   "ramps_new": 0,
   "tents_n": 0,
-  "tents_m2": 0
+  "tents_m2": 0,
+  "c_ii_m": 0
  },
- "budget_note": "the lead's rule: no new places vs base, deck gap no rise, ramps 0 new, tents no rise",
+ "budget_note": "the lead's rule: no new places vs base; deck gap, tents and (c)(ii) no rise; ramps 0 new; every kept claim on a continuous LiDAR layer at its lifted height or with a reason (kept_reasons file, from the page editor)",
  "deck_zero_piece": {
   "name": "Cross Bronx Expressway",
   "x": 8445.6,
@@ -42,6 +43,15 @@
    "after": [
     "p_drape"
    ],
+   "TERV": "v1c_r6s2",
+   "LANES": "highways/work/p2net/final_fdr/r14s"
+  },
+  {
+   "id": "p_lift_base",
+   "tool": "lift_gate",
+   "tag": "v1c_r6s2_r14s_lr3_rl1",
+   "use_existing": true,
+   "existing": "work/drive_audit/deckends/lift_pd_v1c_r6s2_r14s_lr3_rl1",
    "TERV": "v1c_r6s2",
    "LANES": "highways/work/p2net/final_fdr/r14s"
   },
@@ -131,6 +141,18 @@
    ],
    "TERV": "v1c_r6s2",
    "LANES": "highways/work/p2net/final_fdr/r14s"
+  },
+  {
+   "id": "p_kept_lidar",
+   "tool": "kept_lidar",
+   "census": "p_census",
+   "base_census": "p_census_base",
+   "drape": "step:p_drape",
+   "after": [
+    "p_census",
+    "p_census_base",
+    "p_drape"
+   ]
   }
  ],
  "gates": [
@@ -161,6 +183,20 @@
    "check": "census",
    "step": "p_census",
    "base_step": "p_census_base"
+  },
+  {
+   "id": "g_lift",
+   "check": "lift",
+   "step": "p_lift_gate",
+   "base_step": "p_lift_base",
+   "fields": [
+    "c_ii_m"
+   ]
+  },
+  {
+   "id": "g_kept_lidar",
+   "check": "kept_lidar",
+   "step": "p_kept_lidar"
   }
  ],
  "frames": {
@@ -183,5 +219,6 @@
   "note": "6-8 kept-claim sites, picked by the page editor from the new list and trace"
  },
  "expires": "2026-11-28",
- "max_rounds": 3
+ "max_rounds": 3,
+ "success_measure": "rule-2 new-step metres in this round's trace (per_class rule2 step_m) vs the 960 m rule-2 base of round 1 (r6r citywide; r6s2 959.9 m)"
 }
