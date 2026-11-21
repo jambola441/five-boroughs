@@ -329,7 +329,9 @@ def gate(cfg, g, d):
                 f"D for the cap {by_cap.get('D', 0)} of {raised} that raised anything = {d_share:.0%} (cap 20 %; "
                 f"includes {small_pass} PASS on only 1-2 points); verdicts on only 1-2 raised points: "
                 f"{sum(1 for r in rows if r.get('small'))} ({small_pass} PASS, "
-                f"{sum(1 for r in rows if r.get('small') and r.get('cls') == 'FAIL')} FAIL)"), \
+                f"{sum(1 for r in rows if r.get('small') and r.get('cls') == 'FAIL')} FAIL); sliver points (raised "
+                f"alone, not counted as evidence): {sum(int(r.get('sliver') or 0) for r in rows)} on "
+                f"{sum(1 for r in rows if r.get('sliver'))} claims"), \
             {"unbudgeted": [f"FAIL at {r['c'][0]:.0f},{r['c'][1]:.0f}: {r.get('match')}/{r.get('n')} raised points on "
                             f"LiDAR" for r in bad][:30]}
     if k == "census":
