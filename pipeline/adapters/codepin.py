@@ -16,7 +16,7 @@ from common import load_request, project, respond, round_config, sha256, validat
 EXT = (".py", ".mjs", ".js", ".sh", ".cjs")
 DA = ["work/drive_audit"]   # the drive test's gate / scan scripts, used by terrain and page rounds
 ROOTS = {
-    "page_round": ["pe:phaseb"] + DA,
+    "page_round": ["pe:phaseb", "pe:diag"] + DA,
     "terrain_round_live": ["work/terrain_study/p2/tools", "work/terrain_study/tools"] + DA,
     "highway_round": ["highways/work/p2net"],
 }
