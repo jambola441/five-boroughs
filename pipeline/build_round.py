@@ -123,7 +123,7 @@ def highway_tasks(cfg):
     passes = [node(f"h_pass_{i:02d}", "highway", ["pass", "step"], after=[f"h_pass_{i - 1:02d}" if i else "h_assemble"],
                    validated=True, prompt=f"post-pass {s}") for i, s in enumerate(cfg["passes"])]
     last = f"h_pass_{len(cfg['passes']) - 1:02d}"
-    stops = ["d_floor_fix_guard", "d_tile_inventory", "d_no_surface", "d_unsupported", "d_underlay", "d_void", "d_walls"]
+    stops = ["d_floor_fix_guard", "d_tile_inventory", "d_no_surface", "d_unsupported", "d_underlay", "d_void", "d_walls", "d_columns"]
     if cfg.get("crossing_check"):   # macmini switches this on once its r14u rules are in
         stops.append("d_crossing")
     t = [node("h_guard", "highway", ["pass", "writes", "free_gb"], validated=True),

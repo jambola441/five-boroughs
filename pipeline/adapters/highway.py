@@ -163,6 +163,13 @@ def main():
                                     "detail": f"new on-road walls {w['on_road_m']} m (must be 0); absolute on-road "
                                               f"{a['on_road_triangles']} triangles (max {lim}); unreasoned "
                                               f"{a.get('on_road_unreasoned_triangles', 'n/a')}"})
+    if tid == "d_columns":
+        # macmini (21 Nov): stopping. No post on another way's pavement, none across a barrier (r14t: 0 and 0).
+        run(cfg, ["$PY", "-I", "work/p2net/column_rules_check.py", RC], "d_columns.log")
+        j = jload(f"work/p2net/column_rules_check_{r}_nocbe.json")
+        ok = j["column_on_pavement"] == 0 and j["column_x_barrier"] == 0
+        return respond(req, output={"pass": str(ok).lower(), "detail": f"posts {j['posts']}, on pavement "
+                                    f"{j['column_on_pavement']}, across a barrier {j['column_x_barrier']} (both must be 0)"})
     if tid == "d_crossing":
         run(cfg, ["$PY", "-I", "work/p2net/crossing_check.py", f"work/p2net/final_fdr/{r}_profile_all.json", R], "d_crossing.log")
         c = jload(f"work/p2net/crossing_check_{r}.json")
@@ -177,7 +184,7 @@ def main():
         cmds += [(["$PY", "-I", "work/p2net/cut_check2.py", "1105.8", "2179.6"], {})]
         cmds += [(["$PY", "-I", "work/p2net/covered_lanes.py", R], {})]
         cmds += [(["$PY", "-I", f"work/p2net/{s}.py", RC], {}) for s in
-                 ("column_span_check", "column_rules_check", "step_census", "overlap_count")]
+                 ("column_span_check", "step_census", "overlap_count")]   # column_rules_check is the d_columns stop
         cmds += [(["$PY", "-I", "work/p2net/size_by_class.py", "work/hw7/final/all", RC], {})]
         rcs = [run(cfg, a, f"d_listed_{i}.log", e) for i, (a, e) in enumerate(cmds)]
         # page editor's at-grade check: reads its script locally (page code never leaves this machine)
