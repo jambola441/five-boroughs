@@ -159,6 +159,13 @@ def sync_queue(run_dir):
         Dq.raise_item(name, "+".join(hard), "verdict", owner,
                       f"{cfg.get('round', name)} stopped at {', '.join(hard)}: fix in a new round, reasons, debt, or hold?",
                       {k: {**res(k), "error": (T[k].get("error") or "")[:300]} for k in hard}, run_dir, priority=1)
+    rows = os.path.join(run_dir, "register_rows_proposed.jsonl")
+    if T.get("register_update", {}).get("status") == "verified" and os.path.exists(rows):
+        last = json.loads(open(rows).read().strip().splitlines()[-1])
+        Dq.raise_item(name, "register_update", "task", "lead",
+                      f"Write {cfg.get('round', name)}'s register row (proposed by the graph)",
+                      {"row_file": rows, "decision": last.get("decision"), "bundle": last.get("bundle"),
+                       "debt": last.get("debt"), "lead_note": last.get("lead_note")}, run_dir, priority=3)
     for it in Dq.items():
         if it["run"] != name or it["status"] not in ("open", "answered"):
             continue
