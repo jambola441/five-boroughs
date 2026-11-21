@@ -102,7 +102,7 @@ def existing_or_run(cfg, s, out, launch):
 def t_drape(cfg, s, d):
     """1. overlay drape of a variant, then symlink every base tile it did not write."""
     out = project(f"{DA}/page_drape/{s['tag']}")
-    base = project(f"{DA}/page_drape/{s['base']}")
+    base = project(f"{DA}/page_drape/{s['base']}") if s.get("base") else ""   # not needed when reusing a drape
     script = ("env ONLYDIFF=\"$BASE\" \"$NODE\" --import \"$PE_ROOT/phaseb/fb_env_preload.mjs\" "
               "\"$PE_ROOT/phaseb/da_page_drape_wc.mjs\" page_drape/$TAG page_drape/tiles.json && "
               "for f in \"$BASE\"/*.drape.json; do n=$(basename \"$f\"); [ -e page_drape/$TAG/$n ] || "
