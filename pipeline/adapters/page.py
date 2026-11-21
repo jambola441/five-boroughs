@@ -309,8 +309,8 @@ def frames_ready(cfg):
     return {"images": len(imgs), "request": json.dumps(req)[:1500]}
 
 
-PAGE_ASK = ("These are frames from a 3D city driving game. Each image shows the same camera view side by side; "
-            "the panels, left to right, are: {panels}. In each panel list the visible rendering defects (missing "
+PAGE_ASK = ("These are frames from a 3D city driving game, all from the same camera view: either one image with the "
+            "panels side by side, or one image per panel. The panels, in order (left to right), are: {panels}. In each panel list the visible rendering defects (missing "
             "road, floating or misplaced geometry, steps or drops in the road surface, walls or slabs where they "
             "should not be, gaps, see-through holes, z-fighting). Say which defects of the FIRST panel are fixed in "
             "the later panels and which are new there, and where in the frame. End with exactly one JSON block:\n"
@@ -319,14 +319,25 @@ PAGE_ASK = ("These are frames from a 3D city driving game. Each image shows the 
 
 
 def hydrogen_frames(cfg):
+    """One Hydrogen review per site. A site is one side-by-side image, or several files named <site>__<n>.<ext>
+    (n = panel order), which are reviewed together."""
     from qa import hydrogen_review
     folder = frames_folder(cfg)
-    panels = ", ".join(cfg["frames"].get("panels") or ["before", "after"])
-    rows = []
+    names = cfg["frames"].get("panels") or ["before", "after"]
+    sites = {}
     for n in sorted(x for x in os.listdir(folder) if x.lower().endswith(IMG)):
-        tag = "page_" + re.sub(r"[^A-Za-z0-9_.-]", "_", os.path.splitext(n)[0])
-        v = hydrogen_review(tag, [(n, os.path.join(folder, n))], "", ask=PAGE_ASK.format(panels=panels))
-        rows.append({"frame": n, "verdict": v.get("verdict", ""), "fixed": v.get("fixed_vs_first", []),
+        sites.setdefault(os.path.splitext(n)[0].split("__")[0], []).append(n)
+    rows = []
+    for site, files in sites.items():
+        tag = "page_" + re.sub(r"[^A-Za-z0-9_.-]", "_", site)
+        if len(files) == 1:
+            where, panels = "", ", ".join(names)
+        else:
+            where = "The images are the panels in this order: " + "; ".join(
+                f"{f} = {names[i] if i < len(names) else 'panel ' + str(i + 1)}" for i, f in enumerate(files)) + "."
+            panels = ", ".join(names[:len(files)])
+        v = hydrogen_review(tag, [(f, os.path.join(folder, f)) for f in files], where, ask=PAGE_ASK.format(panels=panels))
+        rows.append({"site": site, "files": files, "verdict": v.get("verdict", ""), "fixed": v.get("fixed_vs_first", []),
                      "new": v.get("new_vs_first", []), "seconds": v["seconds"]})
     json.dump(rows, open(os.path.join(OUT, "hydrogen_frames.json"), "w"), indent=1)
     by = {}
