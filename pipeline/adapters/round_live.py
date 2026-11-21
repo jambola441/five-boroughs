@@ -125,6 +125,9 @@ def q_round_gate(cfg, sha):
             return None, "no existing gate log for this round", "not_started"
         return {"gate_log": log, "gate_dir": o, "ran": "existing"}, None, None
     env = {k: v for k, v in (cfg.get("qa_env") or {}).items()}
+    pts = project(f"{TS}/p2/checks/{tv}_crest_points.json")   # terrain study writes it per round
+    if "CREST_POINTS" not in env and os.path.exists(pts):
+        env["CREST_POINTS"] = pts
     rc = sh(["./run_round_gate.sh", tv, sha], project(DA), "qa_round_gate.log", env=env, timeout=4 * 3600)
     if rc == 2:
         return None, "manifest sha differs from the pin", "settled_fail"
