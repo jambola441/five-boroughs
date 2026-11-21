@@ -19,19 +19,16 @@ import shutil
 import stat
 import subprocess
 
-from common import coordinator_json, deps, load_request, project, respond, round_config, validate, OUT
+from common import coordinator_json, deps, load_request, project, respond, round_config, run_job, run_main, validate, OUT
 
 TS = "work/terrain_study"
 DA = "work/drive_audit"
 PY = os.path.join(os.environ.get("NYC_ROOT", ""), ".venv/bin/python")
 
 
-def sh(cmd, cwd, log, env=None, timeout=7200):
-    """Run one of the team's own commands unchanged; stdout+stderr go to a log in the run folder."""
-    with open(os.path.join(OUT, log), "w") as f:
-        p = subprocess.run(cmd, cwd=cwd, stdout=f, stderr=subprocess.STDOUT, timeout=timeout,
-                           env={**os.environ, **(env or {})})
-    return p.returncode
+def sh(cmd, cwd, log, env=None, timeout=None):
+    """Run one of the team's own commands unchanged, as a detached job (see common.run_job); output goes to log."""
+    return run_job(os.path.splitext(log)[0], cmd, cwd, log, env=env)
 
 
 def last(path, n=4000):
@@ -328,4 +325,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    run_main(main)

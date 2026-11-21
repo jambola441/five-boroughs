@@ -31,3 +31,31 @@ irrigator retry "$PIPELINE_OUT/run" lead_gate && irrigator resume "$PIPELINE_OUT
 
 Needs `irrigator`, the `claude` CLI, and `agy`, all signed in on this machine. No keys, page source or
 data go in this repo. It's public.
+
+## Long steps run as jobs
+
+Irrigator ends any command step (and any validator) after 120 s; a swarm/v1 plan can't raise that. It also never
+replays a command step by itself. So every team script that may run longer is started as a detached job
+(`common.run_job`): the first call launches it in its own session and returns `not_started` "job running"; a later
+call settles it once it has exited. Each job runs at most once per run folder (`<run>/jobs/<step>/`).
+
+```
+NYC_ROOT=... tools/drive_run.sh <run>/run          # retries "job running" steps, resumes, until none is left
+WAITING=1 NYC_ROOT=... tools/drive_run.sh <run>/run  # also retries steps awaiting people (frames, approval.json)
+```
+
+## Page rounds (kind `page_round`)
+
+These wrap the page editor's tools, unchanged, from work/page_editor/ROUND_GRAPH_SPEC_PAGE_EDITOR.md:
+drape, lift_gate, newlist, deck_under, ramps, trace, lidar and census.
+- Steps are listed in the round file.
+- Gates are computed in code against the round's declared budget; 0 means "must not rise".
+- Frames are a hand-off. `frames_ready` writes `frames_request.json` (poses, variants and, for trace rounds,
+  sites per class) and waits until the page-editor session has rendered into the named folder and dropped an empty
+  `READY` file. Hydrogen then reviews each image in a copy-only folder, with commands denied.
+- Page code (page_editor/src, phaseb, the set patch lists) is called by local path only. It is never copied,
+  committed or passed to agy.
+- Rounds:
+  - `page_trace_rl1.json`: round 1, the trace;
+  - `page_bpp_r2.json`: round 2, B″ citywide, with a DRAFT budget for the lead to set;
+  - `page_wiring_r6s2_od.json`: round 2's graph on existing outputs.

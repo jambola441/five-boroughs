@@ -37,6 +37,8 @@ def main():
         return write_plan(out, cfg, explore_tasks())
     if cfg.get("kind") == "highway_round":
         return write_plan(out, cfg, highway_tasks(cfg))
+    if cfg.get("kind") == "page_round":
+        return write_plan(out, cfg, page_tasks(cfg))
     if cfg.get("kind") == "terrain_round_live":
         return write_plan(out, cfg, terrain_live_tasks(list(cfg.get("frame_pairs") or {})))
 
@@ -136,9 +138,41 @@ def highway_tasks(cfg):
     return t
 
 
+PAGE_OUT = {"drape": ["out", "tiles_written", "tiles_total"],
+            "lift_gate": ["out", "flags", "visible_drivable_new", "lost_contact_flags", "lost_contact_new_places",
+                          "car_steps_2m", "gate_lines"],
+            "newlist": ["out", "new_places", "new_step2", "new_lost", "gone_places", "gone_step2", "gone_lost"],
+            "deck_under": ["out", "underM", "noneM", "linesUnder", "zero_piece_underM"],
+            "ramps": ["out", "flattened", "previous", "new", "gone", "rampgate", "line"],
+            "trace": ["out", "sites", "counts"], "lidar": ["out", "sites", "counts", "classes"],
+            "census": ["out", "tents_n", "tents_m2", "overflow_polys"]}
+
+
+def page_tasks(cfg):
+    """The page editor's tools (ROUND_GRAPH_SPEC_PAGE_EDITOR.md) as steps in the order the round file lists them;
+    gates computed in code against the declared budget; frames are a hand-off the page-editor session fills."""
+    steps = [s["id"] for s in cfg["steps"]]
+    t = [node("p_disk", "page", ["free_gb"])]
+    t += [node(s["id"], "page", PAGE_OUT[s["tool"]], after=["p_disk"] + s.get("after", []), prompt=s["tool"])
+          for s in cfg["steps"]]
+    gates = [g["id"] for g in cfg.get("gates", [])]
+    t += [node(g["id"], "page", ["pass", "detail", "items"], after=[g["step"]] + ([g["base_step"]] if g.get("base_step") else []),
+               validated=True) for g in cfg.get("gates", [])]
+    fr = []
+    if cfg.get("frames"):
+        t += [node("frames_ready", "page", ["images", "request"], after=cfg["frames"].get("after", steps)),
+              node("hydrogen_frames", "page", ["frames", "verdicts", "rows"], after=["frames_ready"], validated=True)]
+        fr = ["hydrogen_frames"]
+    t += [node("page_accept", "page", ["rules_pass", "decision", "reasons", "class_rows", "next_steps"],
+               after=steps + gates + fr, validated=True),
+          node("lead_gate", "lead", ["approved_by", "decision", "class_rows", "bundle"], after=["page_accept"]),
+          node("register_update", "lead", ["row"], after=["lead_gate"])]
+    return t
+
+
 def write_plan(out, cfg, tasks):
     providers = {p: {"command": [PY, "-I", os.path.join(HERE, "adapters", p + ".py")], "env": ENV}
-                 for p in ("terrain", "qa", "lead", "explore", "round_live", "highway")}
+                 for p in ("terrain", "qa", "lead", "explore", "round_live", "highway", "page")}
     plan = {"api_version": "swarm/v1", "name": "round: " + cfg["round"], "max_tasks": len(tasks) + 2,
             "providers": providers, "tasks": tasks}
     json.dump(plan, open(os.path.join(out, "plan.json"), "w"), indent=1)

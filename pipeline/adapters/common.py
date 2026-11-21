@@ -13,8 +13,12 @@ ROOT = os.environ.get("NYC_ROOT", "")
 OUT = os.environ.get("PIPELINE_OUT", "")
 
 
+_REQ = {}
+
+
 def load_request():
-    return json.load(sys.stdin)
+    _REQ.update(json.load(sys.stdin))
+    return _REQ
 
 
 def respond(req, outcome="settled", output=None, error=""):
@@ -103,3 +107,63 @@ def claude_json(prompt, schema, cwd, model="claude-opus-5-5", timeout=600):
     if data.get("is_error"):
         raise RuntimeError(str(data.get("result"))[:200])
     return data.get("structured_output") or json.loads(data.get("result", "{}"))
+
+
+# ---------- long steps ----------
+# Irrigator ends a command step (and a validator) after 120 s and marks it uncertain ("deadline"); swarm/v1 plans
+# can't raise that. So anything longer runs as a detached JOB: the first call starts it in its own session (outside
+# Irrigator's process group, so it survives the step's end and an Irrigator crash) and returns not_started
+# "job running"; every later call (irrigator resume RUN --retry-failed, or tools/drive_run.sh) picks the same job
+# up by name and settles once it has exited. A job is started at most once per run folder.
+
+JOB_WAIT = 90  # seconds a call waits for its job before handing back (under the 120 s deadline)
+
+
+class Running(Exception):
+    """The step's job is still running: the step reports not_started and is retried later."""
+
+
+def run_job(name, cmd, cwd, log, env=None, wait=JOB_WAIT):
+    """Run cmd as a detached job named name; return its exit code once it has finished, else raise Running.
+    stdout+stderr go to OUT/log. A job that died without writing its exit code raises RuntimeError."""
+    import time
+    d = os.path.join(OUT, "jobs", name)
+    rec, rcf = os.path.join(d, "job.json"), os.path.join(d, "rc")
+    if not os.path.exists(rec):
+        os.makedirs(d, exist_ok=True)
+        with open(os.path.join(OUT, log), "w") as f:
+            p = subprocess.Popen(["/bin/sh", "-c", '"$@"; echo $? > "$JOB_RC.tmp" && mv "$JOB_RC.tmp" "$JOB_RC"',
+                                  "job"] + list(cmd), cwd=cwd, stdout=f, stderr=subprocess.STDOUT,
+                                 stdin=subprocess.DEVNULL, start_new_session=True,
+                                 env={**os.environ, **(env or {}), "JOB_RC": rcf})
+        json.dump({"pid": p.pid, "cmd": [str(c) for c in cmd], "cwd": cwd, "log": log, "started": time.time()},
+                  open(rec, "w"))
+    j = json.load(open(rec))
+    t_end = time.time() + wait
+    while True:
+        if os.path.exists(rcf):
+            return int(open(rcf).read().strip() or -1)
+        try:
+            os.kill(j["pid"], 0)
+            alive = True
+        except ProcessLookupError:
+            alive = False
+        except PermissionError:
+            alive = True
+        if not alive:
+            time.sleep(1)
+            if os.path.exists(rcf):
+                continue
+            raise RuntimeError(f"job {name} (pid {j['pid']}) ended without an exit code; see {log}")
+        if time.time() >= t_end:
+            mins = (time.time() - j["started"]) / 60
+            raise Running(f"job running: {name}, {mins:.0f} min so far (log {log})")
+        time.sleep(3)
+
+
+def run_main(main):
+    """Entry point for every adapter: a still-running job becomes not_started, so the step is simply retried."""
+    try:
+        main()
+    except Running as e:
+        respond(_REQ, "not_started", error=str(e))

@@ -20,7 +20,7 @@ import os
 import shutil
 import subprocess
 
-from common import deps, load_request, project, respond, round_config, validate, OUT
+from common import deps, load_request, project, respond, round_config, run_job, run_main, validate, OUT
 
 HW = "highways"
 CBE = "x10_z-17 x10_z-18 x11_z-18 x12_z-18 x13_z-17 x13_z-18 x14_z-17 x15_z-17 x8_z-18 x9_z-17 x9_z-18".split()
@@ -33,12 +33,11 @@ def paths(cfg):
 
 
 def run(cfg, argv, log, env=None, cwd=None):
+    """macmini's own command, unchanged, as a detached job (see common.run_job); output goes to log."""
     py = os.path.join(os.environ["NYC_ROOT"], ".venv/bin/python")
     argv = [py if a == "$PY" else a for a in argv]
-    with open(os.path.join(OUT, log), "w") as f:
-        p = subprocess.run(argv, cwd=cwd or project(HW), stdout=f, stderr=subprocess.STDOUT, timeout=4 * 3600,
-                           env={**os.environ, "P2_TERV": cfg["p2_terv"], **(env or {})})
-    return p.returncode
+    return run_job(os.path.splitext(log)[0], argv, cwd or project(HW), log,
+                   env={"P2_TERV": cfg["p2_terv"], **(env or {})})
 
 
 def jload(rel):
@@ -190,4 +189,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    run_main(main)

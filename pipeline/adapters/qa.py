@@ -10,7 +10,8 @@ import shutil
 import subprocess
 import time
 
-from common import (coordinator_json, deps, load_request, project, respond, round_config, validate, OUT)
+from common import (coordinator_json, deps, load_request, project, respond, round_config, run_job, run_main,
+                    validate, OUT)
 
 MIN_FREE_GB = 5
 HYDROGEN = "gemini-4-hydrogen-high"
@@ -50,40 +51,43 @@ def drive_gate(cfg):
     }
 
 
+def hydrogen_review(name, images, where, ask=ASK):
+    """One Hydrogen look at a few frames, as a detached job (agy can take minutes; steps end at 120 s).
+    images: [(name_in_folder, source_path)]. The folder holds copies of the frames only; agy may read nothing else.
+    Returns the parsed verdict dict plus seconds; raises Running while agy works."""
+    d = os.path.join(OUT, "hydrogen", name)
+    if not os.path.exists(os.path.join(OUT, "jobs", "hydrogen_" + name, "job.json")):
+        shutil.rmtree(d, ignore_errors=True)
+        os.makedirs(d)
+        for n, src in images:
+            shutil.copy2(src, os.path.join(d, n))
+    pre = (f"The images are in the folder {d} : {' '.join(n for n, _ in images)}. {where} Open and look at every one "
+           "of them with your file/image viewing tool. Do not run shell commands and do not open any other files.")
+    rc = run_job("hydrogen_" + name, ["agy", "-p", pre + "\n\n" + ask, "--model", HYDROGEN, "--add-dir", d,
+                                      "--settings", '{"permissions":{"deny":["command(*)"]}}', "--print-timeout",
+                                      "600s", "--output-format", "json"], d, f"hydrogen/{name}/agy_stdout.json")
+    rec = json.load(open(os.path.join(OUT, "jobs", "hydrogen_" + name, "job.json")))
+    try:
+        j = json.load(open(os.path.join(d, "agy_stdout.json")))
+    except ValueError:
+        raise RuntimeError(f"agy rc={rc}, unparseable output")
+    m = re.findall(r"```json\s*(\{.*?\})\s*```", j.get("response", ""), re.S)
+    v = json.loads(m[-1]) if m else {}
+    v["seconds"] = round(os.path.getmtime(os.path.join(OUT, "jobs", "hydrogen_" + name, "rc")) - rec["started"], 1)
+    return v
+
+
 def hydrogen(req, cfg, pair_id):
     before, after = cfg["frame_pairs"][pair_id]
-    d = os.path.join(OUT, "hydrogen", f"{pair_id}_a{req.get('attempt', 1)}")
-    shutil.rmtree(d, ignore_errors=True)
-    os.makedirs(d)
-    names = []
-    for label, src in (("before", before), ("after", after)):
-        if src is None:
-            continue
-        n = label + os.path.splitext(src)[1]
-        shutil.copy2(project(src), os.path.join(d, n))
-        names.append(n)
-    where = (f"BEFORE is {names[0]}, AFTER is {names[1]}." if len(names) == 2 else
-             f"{names[0]} is one side-by-side image: the LEFT half is BEFORE, the RIGHT half is AFTER.")
-    pre = (f"The images are in the folder {d} : {' '.join(names)}. {where} Open and look at every one of them with "
-           "your file/image viewing tool. Do not run shell commands and do not open any other files.")
-    t0 = time.time()
+    imgs = [(label + os.path.splitext(src)[1], project(src)) for label, src in (("before", before), ("after", after)) if src]
+    where = (f"BEFORE is {imgs[0][0]}, AFTER is {imgs[1][0]}." if len(imgs) == 2 else
+             f"{imgs[0][0]} is one side-by-side image: the LEFT half is BEFORE, the RIGHT half is AFTER.")
     try:
-        p = subprocess.run(["agy", "-p", pre + "\n\n" + ASK, "--model", HYDROGEN, "--add-dir", d,
-                            "--settings", '{"permissions":{"deny":["command(*)"]}}', "--print-timeout", "600s",
-                            "--output-format", "json"], cwd=d, capture_output=True, text=True, timeout=660)
-    except subprocess.TimeoutExpired:
-        return respond(req, "uncertain", error="agy timed out")
-    open(os.path.join(d, "agy_stdout.json"), "w").write(p.stdout)
-    try:
-        j = json.loads(p.stdout)
-    except ValueError:
-        return respond(req, "uncertain", error=f"agy rc={p.returncode}, unparseable output")
-    text = j.get("response", "")
-    m = re.findall(r"```json\s*(\{.*?\})\s*```", text, re.S)
-    v = json.loads(m[-1]) if m else {}
+        v = hydrogen_review(pair_id, imgs, where)
+    except RuntimeError as e:
+        return respond(req, "uncertain", error=str(e)[:300])
     respond(req, output={"verdict": v.get("verdict", ""), "fixed": json.dumps(v.get("fixed", [])),
-                         "new_in_after": json.dumps(v.get("new_in_after", [])),
-                         "seconds": round(time.time() - t0, 1)})
+                         "new_in_after": json.dumps(v.get("new_in_after", [])), "seconds": v["seconds"]})
 
 
 def main():
@@ -136,4 +140,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    run_main(main)

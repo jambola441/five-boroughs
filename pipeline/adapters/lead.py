@@ -24,7 +24,7 @@ def main():
             return respond(req, "not_started", error="awaiting lead approval (write approval.json, then retry)")
         decision = json.load(open(path))
         d = deps(req)
-        qa = d.get("qa_accept") or d.get("explore_accept") or {}
+        qa = d.get("qa_accept") or d.get("explore_accept") or d.get("page_accept") or {}
         return respond(req, output={"approved_by": decision.get("by", ""), "decision": qa.get("decision", ""),
                                     "class_rows": qa.get("class_rows", ""), "bundle": qa.get("bundle") or "not assessed in this round"})
 

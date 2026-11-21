@@ -1,0 +1,200 @@
+{
+ "round": "Page round 2 wiring test (r6s2 B′+reslocal=1 ondeck vs r6s2 B′): reuses existing drape, gate and ramp outputs; runs only new list and census",
+ "kind": "page_round",
+ "mode": "live",
+ "accept": "explore",
+ "idea": "Make B″ the lifting rule (a street polygon rides its deck whole when it overshoots by 6 m or less, else clipped or blended), with the stacked-claim fix (reslocal=1). B′ clips everything at the deck surface + 1 m.",
+ "budget": {
+  "new_step_places": 10,
+  "deck_under_m": 0,
+  "ramps_flattened": 0,
+  "ramps_new": 0,
+  "tents_n": 0,
+  "tents_m2": 0,
+  "visible_drivable_new": 0,
+  "lost_contact_flags": 0
+ },
+ "budget_note": "DRAFT for the lead to set; 0 = must not rise vs the r6s2 B′ base",
+ "debt": [
+  {
+   "name": "Bruckner Blvd NB entrance from Havemeyer Ave: 12.43 m step",
+   "x": 11606,
+   "z": -6688,
+   "radius_m": 90,
+   "pay_back": "this exploration round"
+  },
+  {
+   "name": "Cross Bronx Expy 41113 lost contact at the #6 site",
+   "x": 8453,
+   "z": -7776,
+   "radius_m": 30,
+   "pay_back": "stacked-claim fix (reslocal=1)"
+  }
+ ],
+ "target_fixed": [
+  {
+   "name": "Mill Basin Bridge 5.04 m",
+   "x": 6992,
+   "z": 18195
+  },
+  {
+   "name": "Mill Basin Bridge 5.03 m",
+   "x": 6977,
+   "z": 18246
+  },
+  {
+   "name": "Roosevelt Ave Bridge 3.86 m",
+   "x": 12096,
+   "z": 1214
+  }
+ ],
+ "expires": "2026-11-28",
+ "max_rounds": 3,
+ "deck_zero_piece": {
+  "name": "Cross Bronx Expressway",
+  "x": 8445.6,
+  "z": -7785.4,
+  "radius_m": 15
+ },
+ "steps": [
+  {
+   "id": "p_drape",
+   "tool": "drape",
+   "tag": "v1c_r6s2_r14s_lr4_rl1",
+   "base": "v1c_r6s2_r14s_lr3",
+   "LIFTRULE": 4,
+   "RESLOCAL": 1,
+   "TERV": "v1c_r6s2",
+   "LANES": "highways/work/p2net/final_fdr/r14s",
+   "existing": "work/drive_audit/page_drape/v1c_r6s2_r14s_lr3_rl1od",
+   "use_existing": true
+  },
+  {
+   "id": "p_lift_gate",
+   "tool": "lift_gate",
+   "tag": "v1c_r6s2_r14s_lr4_rl1",
+   "drape": "step:p_drape",
+   "after": [
+    "p_drape"
+   ],
+   "TERV": "v1c_r6s2",
+   "LANES": "highways/work/p2net/final_fdr/r14s",
+   "existing": "work/drive_audit/deckends/lift_pd_v1c_r6s2_r14s_lr3_rl1od",
+   "use_existing": true
+  },
+  {
+   "id": "p_lift_base",
+   "tool": "lift_gate",
+   "tag": "v1c_r6s2_r14s_lr3",
+   "use_existing": true,
+   "existing": "work/drive_audit/deckends/lift_pd_v1c_r6s2_r14s_lr3",
+   "TERV": "v1c_r6s2",
+   "LANES": "highways/work/p2net/final_fdr/r14s"
+  },
+  {
+   "id": "p_newlist",
+   "tool": "newlist",
+   "base_flags": "work/drive_audit/deckends/lift_pd_v1c_r6s2_r14s_lr3/city/flags_drape.json",
+   "variant_flags": "step:p_lift_gate",
+   "after": [
+    "p_lift_gate"
+   ]
+  },
+  {
+   "id": "p_deck_under",
+   "tool": "deck_under",
+   "drape": "step:p_drape",
+   "after": [
+    "p_drape"
+   ],
+   "TERV": "v1c_r6s2",
+   "existing": "work/page_editor/data/census/cbe6/deck_under_v1c_r6s2_r14s_lr3_rl1od.json",
+   "use_existing": true
+  },
+  {
+   "id": "p_ramps",
+   "tool": "ramps",
+   "tag": "v1c_r6s2_r14s_lr4_rl1",
+   "TERV": "v1c_r6s2",
+   "after": [
+    "p_drape"
+   ],
+   "existing": "work/drive_audit/deckends/ramps_v1c_r6s2_r14s_lr3_rl1od",
+   "use_existing": true
+  },
+  {
+   "id": "p_census",
+   "tool": "census",
+   "LIFTRULE": 3,
+   "RESLOCAL": 1,
+   "TERV": "v1c_r6s2",
+   "LANES": "highways/work/p2net/final_fdr/r14s",
+   "ONDECK": 1,
+   "after": [
+    "p_newlist"
+   ]
+  },
+  {
+   "id": "p_census_base",
+   "tool": "census",
+   "LIFTRULE": 3,
+   "RESLOCAL": 0,
+   "TERV": "v1c_r6s2",
+   "LANES": "highways/work/p2net/final_fdr/r14s",
+   "after": [
+    "p_census"
+   ]
+  }
+ ],
+ "gates": [
+  {
+   "id": "g_newlist",
+   "check": "newlist",
+   "step": "p_newlist"
+  },
+  {
+   "id": "g_deck_under",
+   "check": "deck_under",
+   "step": "p_deck_under",
+   "base_underM": 37010
+  },
+  {
+   "id": "g_ramps",
+   "check": "ramps",
+   "step": "p_ramps"
+  },
+  {
+   "id": "g_census",
+   "check": "census",
+   "step": "p_census",
+   "base_step": "p_census_base"
+  },
+  {
+   "id": "g_lift",
+   "check": "lift",
+   "step": "p_lift_gate",
+   "base_step": "p_lift_base"
+  }
+ ],
+ "frames": {
+  "folder": "work/page_editor/frames/graph/page_wiring_test",
+  "after": [
+   "p_newlist"
+  ],
+  "panels": [
+   "today: B′ (r6s2)",
+   "B″ + reslocal=1"
+  ],
+  "variants": [
+   "LIFTRULE=3 RESLOCAL=0",
+   "LIFTRULE=4 RESLOCAL=1"
+  ],
+  "poses": [
+   "Mill Basin Bridge 5.04 m",
+   "Mill Basin Bridge 5.03 m",
+   "Roosevelt Ave Bridge 3.86 m",
+   "Havemeyer Ave / Bruckner NB entrance (12.43 m debt)",
+   "Cross Bronx #6 site (debt)"
+  ]
+ }
+}

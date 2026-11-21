@@ -12,9 +12,9 @@ import os
 import re
 import sys
 
-WAIT = re.compile(r"awaiting|plan-only|has not set|not written yet|GB free|need \d+ GB", re.I)
+WAIT = re.compile(r"awaiting|plan-only|has not set|not written yet|GB free|need \d+ GB|job running|needs \w+ first|paused", re.I)
 KIND = {"terrain_round_live": "Terrain + QA round", "page_rule_explore": "Exploration round",
-        "highway_round": "Highway round", None: "Shadow round"}
+        "highway_round": "Highway round", "page_round": "Page round", None: "Shadow round"}
 
 
 def state_of(t):
