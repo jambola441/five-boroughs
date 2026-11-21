@@ -279,7 +279,9 @@ def main():
     if tid == "gate_flight":
         rule = cfg.get("rules", {}).get("flight")
         fl = gate_numbers(d["qa_round_gate"]).get("flight") if "qa_round_gate" in d else None
-        if rule and fl:  # drive test's GATE.json: {"pieces": N, "max_flight_cm_at_80": x}
+        if rule and fl:  # drive test's GATE.json: {"pieces": N, "max_flight_cm_at_80": x, "points_without_route": k}
+            if fl.get("points_without_route", 0) > 0:
+                return respond(req, "settled", error=f"{fl['points_without_route']} crest points found no car route; fix the points file")
             ok = fl["max_flight_cm_at_80"] <= rule["max_cm_at_80"]
             return respond(req, output={"pass": str(ok).lower(),
                                         "detail": f"{fl['pieces']} new pieces, worst flight {fl['max_flight_cm_at_80']} cm at 80 km/h (max {rule['max_cm_at_80']})"})
