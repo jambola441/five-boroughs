@@ -376,7 +376,7 @@ def hydrogen_frames(cfg):
             panels = ", ".join(names[:len(files)])
         try:
             v = hydrogen_review(tag, [(f, os.path.join(folder, f)) for f in files], where,
-                                ask=PAGE_ASK.format(panels=panels), wait=max(0, 60 - (time.time() - t0)))
+                                ask=PAGE_ASK.format(panels=panels), wait=0)   # start or collect; the driver comes back
         except Running:
             waiting += 1
             continue
