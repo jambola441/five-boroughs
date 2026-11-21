@@ -412,12 +412,17 @@ def page_accept(req, cfg, d):
     brief = {k: cfg[k] for k in ("idea", "question", "budget", "debt", "target_fixed", "expires") if k in cfg}
     if (cfg.get("frames") or {}).get("unreadable_note"):
         brief["frames_note"] = cfg["frames"]["unreadable_note"]
-    ev = {k: {kk: vv for kk, vv in v.items() if kk != "out"} for k, v in d.items()}   # no local paths to the model
+    ev = {k: {kk: vv for kk, vv in v.items() if kk not in ("out", "rows")} for k, v in d.items()}   # no local paths
+    hf = os.path.join(OUT, "hydrogen_frames.json")
+    if os.path.exists(hf):   # every frame's verdict in full, compactly (the step output itself is capped)
+        ev["frame_reviews"] = [{"site": r["site"], "verdict": r["verdict"],
+                                "fixed": [x[:160] for x in r["fixed"][:3]], "new": [x[:160] for x in r["new"][:3]]}
+                               for r in json.load(open(hf))]
     prompt = (open(os.path.join(os.path.dirname(__file__), "..", "prompts", f"page_accept_{cfg['accept']}.md")).read()
               + "\n\nRound: " + cfg["round"] + "\n\nThe round as declared up front:\n" + json.dumps(brief, indent=1)
               + f"\n\nGate verdict, computed in code: {'PASS' if rules_pass else 'FAIL'}"
               + (" (past its expiry date)" if expired else "")
-              + "\n\nEvidence:\n" + json.dumps(ev, indent=1)[:16000])
+              + "\n\nEvidence:\n" + json.dumps(ev, indent=1)[:40000])
     try:
         v = coordinator_json(prompt, SCHEMA, cwd=OUT, spec=cfg.get("coordinator"))
     except Exception as e:
