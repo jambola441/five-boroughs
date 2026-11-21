@@ -323,7 +323,9 @@ def gate(cfg, g, d):
         unsure = d_share > 0.2   # the lead: too much of the rule unverified -> uncertain, blocks
         return (not bad and not unsure), (("UNCERTAIN (blocks): " if unsure else "")
                 + f"{len(rows)} kept claims: {by}; {len(fails)} FAIL, {len(fails) - len(bad)} of them with a reason; "
-                f"D {by.get('D', 0)} of {raised} that raised anything = {d_share:.0%} (cap 20 %)"), \
+                f"D {by.get('D', 0)} of {raised} that raised anything = {d_share:.0%} (cap 20 %); judged on only 1-2 "
+                f"raised points (small): {sum(1 for r in rows if r.get('small'))} "
+                f"({sum(1 for r in rows if r.get('small') and r.get('cls') == 'PASS')} PASS)"), \
             {"unbudgeted": [f"FAIL at {r['c'][0]:.0f},{r['c'][1]:.0f}: {r.get('match')}/{r.get('n')} raised points on "
                             f"LiDAR" for r in bad][:30]}
     if k == "census":
