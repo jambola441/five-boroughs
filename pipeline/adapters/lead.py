@@ -25,14 +25,20 @@ def main():
         decision = json.load(open(path))
         d = deps(req)
         qa = d.get("qa_accept") or d.get("explore_accept") or d.get("page_accept") or {}
+        rows = qa.get("class_rows") or json.dumps([{"class": "accept reason", "count": "", "status": r}
+                                                   for r in json.loads(qa.get("reasons") or "[]")])   # terrain rounds give reasons
         return respond(req, output={"approved_by": decision.get("by", ""), "decision": qa.get("decision", ""),
-                                    "class_rows": qa.get("class_rows", ""), "bundle": qa.get("bundle") or "not assessed in this round"})
+                                    "class_rows": rows, "bundle": qa.get("bundle") or "not assessed in this round"})
 
     if tid == "register_update":
         g = deps(req).get("lead_gate", {})
         row = {"round": cfg["round"], "decision": g.get("decision"), "approved_by": g.get("approved_by"),
                "bundle": g.get("bundle", ""),
                "class_rows": json.loads(g.get("class_rows") or "[]"), "at": time.strftime("%Y-%m-%dT%H:%M:%S")}
+        debts = (cfg.get("qa_debt") or []) + (cfg.get("debt") or [])   # what the round carries, owners as in round.json
+        if debts:
+            row["debt"] = [{k: e.get(k) for k in ("name", "owner", "pay_back", "linesUnder", "underM", "tents_n", "tents_m2")
+                            if e.get(k) is not None} for e in debts]
         ap = os.path.join(OUT, "approval.json")
         if os.path.exists(ap):   # the lead's own words go with the row
             row["lead_note"] = json.load(open(ap)).get("note", "")
