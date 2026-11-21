@@ -1,5 +1,5 @@
 {
- "round": "Page round 3: rule-2 same-deck keep (rs2keep, loser >= 5 m²) on B′ + reslocal=1, r6s2 + r14s",
+ "round": "Page round 3: rule-2 same-deck keep with >= 5 m² loser area (RS2KEEP=2) on B′ + reslocal=1, r6s2 + r14s",
  "kind": "page_round",
  "mode": "live",
  "accept": "explore",
@@ -32,7 +32,7 @@
    "base": "v1c_r6s2_r14s_lr3_rl1b",
    "LIFTRULE": 3,
    "RESLOCAL": 1,
-   "RS2KEEP": 1,
+   "RS2KEEP": 2,
    "TERV": "v1c_r6s2",
    "LANES": "highways/work/p2net/final_fdr/r14s"
   },
@@ -113,7 +113,7 @@
    "list": "step:p_newlist",
    "LIFTRULE": 3,
    "RESLOCAL": 1,
-   "RS2KEEP": 1,
+   "RS2KEEP": 2,
    "after": [
     "p_newlist"
    ],
@@ -125,7 +125,7 @@
    "tool": "census_rs",
    "LIFTRULE": 3,
    "RESLOCAL": 1,
-   "RS2KEEP": 1,
+   "RS2KEEP": 2,
    "after": [
     "p_newlist"
    ],
@@ -224,11 +224,11 @@
   "per_class": 2,
   "panels": [
    "B′ + reslocal=1",
-   "B′ + reslocal=1 + rs2keep"
+   "B′ + reslocal=1 + rs2keep (area)"
   ],
   "variants": [
    "LIFTRULE=3 RESLOCAL=1",
-   "LIFTRULE=3 RESLOCAL=1 RS2KEEP=1"
+   "LIFTRULE=3 RESLOCAL=1 RS2KEEP=2"
   ],
   "note": "6-8 kept-claim sites, picked by the page editor from the new list and trace"
  },
@@ -236,5 +236,8 @@
  "max_rounds": 3,
  "success_measure": "rule-2 new-step metres in this round's trace (per_class rule2 step_m) vs the 960 m rule-2 base of round 1 (r6r citywide; r6s2 959.9 m)",
  "kept_reasons": "pe:data/census/rs2keep_kept_reasons.json",
- "switch_pending": "the page editor's area switch (RS2AREA=1 or similar): add it to every RS2KEEP step before the round starts"
+ "require_sha": {
+  "pe:phaseb/setd_core.mjs": "507283f87a1695385beec8a5b5c0c75069392a28baa4879dc02e7f4aded36d23",
+  "pe:phaseb/bridge_own_census.mjs": "f5431fb419d6e312d93122cdd512dacb27be2a50ed18597aa5db23365ac4324c"
+ }
 }

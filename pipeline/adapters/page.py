@@ -220,7 +220,7 @@ def t_census(cfg, s, d):
     out = os.path.join(OUT, s["id"] + ".json")
     rs = os.path.join(OUT, s["id"] + "_rs.jsonl")
     rk = os.path.join(OUT, s["id"] + "_rk.jsonl")   # with RS2KEEP on: every kept claim (rk_events.mjs)
-    keep = bool(s.get("rs_events") and str(s.get("RS2KEEP", "0")) == "1")
+    keep = bool(s.get("rs_events") and str(s.get("RS2KEEP", "0")) in ("1", "2"))   # 2 = keep + >= 5 m² area
     pre = (["--import", "./phaseb/rs_events.mjs"] if s.get("rs_events") else []) + (["--import", "./phaseb/rk_events.mjs"] if keep else [])
     env = {"ALLTILES": "1", **node_env(s), **({"CLAIMTRACE": "1", "RS_OUT": rs} if s.get("rs_events") else {}),
            **({"RK_OUT": rk} if keep else {})}
