@@ -1,0 +1,19 @@
+{
+  "round": "v1c_r6r (shadow re-check with the widened gate)",
+  "note": "Paths are relative to NYC_ROOT. Shadow run: every input is a frozen round or a finished report.",
+  "terrain_manifest": "work/terrain_study/p2/out/manifest_terrain_v1c_r6r_sha256.json",
+  "terrain_manifest_sha": "f1395a9b335756597d30e5f2eceb5ce78c41e23ca0ecb00db5020d3af1fed5e8",
+  "highway_sums": "highways/work/p2net/final_fdr/r14s.SHA256SUMS",
+  "highway_sums_sha": "bb0505c03e06b5fd1ceb7e27436491729f5748c162c07f1af809b6a5fd6fc6dd",
+  "terrain_report": "work/terrain_study/p2/V1C_R6R_REPORT.md",
+  "crest_census": "work/terrain_study/p2/checks/v1c_r6r_crest_census.json",
+  "exact_report": "work/drive_audit/deckends/EXACT_R6R.md",
+  "gate_c_split": "work/drive_audit/deckends/gate_c_split/split_r6r.json",
+  "deck_gap_census": "work/page_editor/data/census/cbe6/deck_under_r6r_off.json",
+  "frame_pairs": {
+    "e5_drv": ["work/terrain_study/p2/out/renders/v1c_r6r_pairs/pair_e5_drv.jpg", null],
+    "e5_ramp": ["work/terrain_study/p2/out/renders/v1c_r6r_pairs/pair_e5_ramp.jpg", null],
+    "e6_drv": ["work/terrain_study/p2/out/renders/v1c_r6r_pairs/pair_e6_drv.jpg", null],
+    "e9_fix": ["work/terrain_study/p2/out/renders/v1c_r6r_pairs/pair_e9_fix.jpg", null]
+  }
+}
