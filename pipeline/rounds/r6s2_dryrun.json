@@ -5,7 +5,7 @@
  "mode": "existing",
  "expected_sha": "baa4c7a9d8938b6d249d9c9fbae868c978fa95bbe6fba97609fb1692ba471ad7",
  "prev_terrain": {
-  "free_ends": 180,
+  "free_ends": 399,
   "junctions_over_2": 12,
   "junctions_max": 2.86,
   "crest_8pct": 23,
@@ -38,5 +38,6 @@
  "frame_pairs": {},
  "coordinator": "agy:gemini-4-hydrogen-high",
  "note": "Dry run on the frozen round: proves every step and parser; decides nothing.",
- "live_ramps_flattened": null
+ "live_ramps_flattened": null,
+ "free_ends_key": "TBD by terrain study (total including live's lines in the 605 fallback tiles)"
 }

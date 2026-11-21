@@ -57,7 +57,13 @@ def t_build(cfg):
 def t_checks(cfg):
     r = cfg["round"]
     fe = json.load(open(project(f"{TS}/p2/checks/{r}_free_ends.json")))["summary"]
-    free_ends = sum(v.get("ends", 0) for v in fe.values() if isinstance(v, dict))
+    key = cfg.get("free_ends_key", "")
+    if key and key in fe:   # lead (21 Nov): the count includes live's lines in the fallback tiles
+        free_ends = fe[key]
+    elif key and not key.startswith("TBD"):
+        raise KeyError(f"free-ends key {key} not in the round's summary")
+    else:
+        free_ends = sum(v.get("ends", 0) for v in fe.values() if isinstance(v, dict))
     cr = json.load(open(project(f"{TS}/p2/checks/{r}_crest_census.json")))["summary"]["by_kind"]
     crest8 = cr["raised"]["ge_8pct_near_end"] + cr["ext"]["ge_8pct_near_end"]
     crest12 = cr["raised"]["ge_12pct_near_end"] + cr["ext"]["ge_12pct_near_end"]
