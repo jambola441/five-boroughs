@@ -65,7 +65,8 @@
  "frames_outside_graph": true,
  "changes": [
   "2026-11-21: prev_qa deck gap corrected by the lead to r6s2's own deck_under base (was 37010/32872/592, r6r's numbers)",
-  "2026-11-21: deck-gap debt (+1 line / +18 m, E 174 St, owner page claim class 'none') added by the lead"
+  "2026-11-21: deck-gap debt (+1 line / +18 m, E 174 St, owner page claim class 'none') added by the lead",
+  "2026-11-21: debt owner renamed by the lead to 'page: modelled-chain test on joined chains'"
  ],
  "prev_qa_authoritative": true,
  "qa_debt": [
@@ -73,9 +74,9 @@
    "name": "East 174th Street R2 deck line (5824.8,-8540.7)-(5847.9,-8528.2): page draws 18 of 28 m under it, max gap 2.08 m",
    "linesUnder": 1,
    "underM": 18,
-   "owner": "page claim: deck line never claimed (trace class none)",
-   "evidence": "trace_sites class none; terrain line matches LiDAR within 0.21 m (terrain study)",
-   "pay_back": "when the page editor fixes the 'never claimed' class",
+   "owner": "page: modelled-chain test on joined chains",
+   "evidence": "trace_sites class none; terrain line matches LiDAR within 0.21 m (terrain study); page editor: the 28 m R2 line (osm 5698008) is joined to osm 1305318055 (86 m, 86/86 points within 8 m of CBE lanes) -> 93/114 = 82 % >= 60 % -> whole chain modelled, excluded before any claim",
+   "pay_back": "the page round after rl1k2 (per-line modelled test, behind a switch)",
    "added_by": "lead, 2026-11-21"
   }
  ]
