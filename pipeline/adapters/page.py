@@ -255,9 +255,20 @@ def t_kept_lidar(cfg, s, d):
     return {"out": p, "kept": len(j["rows"]), "counts": json.dumps(j["counts"])}
 
 
+def t_tent_diff(cfg, s, d):
+    """10. drape-wide tent census, variant vs base (the page editor's tent_diff.py): every tile the variant wrote itself,
+    no bridge radius. A tent = a drawn roadbed / sidewalk triangle spanning > 6 m in y."""
+    out = os.path.join(OUT, s["id"] + ".json")
+    p = existing_or_run(cfg, s, out, lambda: run_job(
+        s["id"], [py(), "-I", project("pe:phaseb/tent_diff.py"), ref(cfg, d, s["drape"]), project(s["base_drape"]), out],
+        project("pe:"), s["id"] + ".log"))
+    t = json.load(open(p))["total"]
+    return {"out": p, "n_new": t["n_new"], "m2_new": t["m2_new"], "tiles_changed": t.get("tiles_changed", -1)}
+
+
 TOOLS = {"drape": t_drape, "lift_gate": t_lift_gate, "newlist": t_newlist, "deck_under": t_deck_under,
          "ramps": t_ramps, "trace": t_trace, "lidar": t_lidar, "census": t_census,
-         "census_rs": lambda cfg, s, d: t_census(cfg, {**s, "rs_events": True}, d), "kept_lidar": t_kept_lidar}
+         "census_rs": lambda cfg, s, d: t_census(cfg, {**s, "rs_events": True}, d), "kept_lidar": t_kept_lidar, "tent_diff": t_tent_diff}
 
 
 # ---------- gates (computed in code; budgets from the round file, default 0 = must not rise) ----------
@@ -348,6 +359,14 @@ def gate(cfg, g, d):
                              f"LiDAR" for r in bad]
                             + [f"sliver spike {h - hb:.1f} m at {x:.1f},{z:.1f} (claim at {r['c'][0]:.0f},{r['c'][1]:.0f}; "
                                f"variant {h:.1f} m, base {hb:.1f} m)" for r, x, z, h, hb in spikes])[:40]}
+    if k == "tent_diff":   # new tents anywhere the variant wrote a tile
+        j = json.load(open(d[g["step"]]["out"]))
+        t, lim = j["total"], b.get("tents_new", 0)
+        new = [(r["tile"], w) for r in j["rows"] for w in r.get("new", [])]
+        return t["n_new"] <= lim, (f"tents {t['n_var']} vs base {t['n_base']}: {t['n_new']} new, {t['m2_new']} m² "
+                                   f"(limit +{lim}); {t.get('tiles_changed', '?')} of {t.get('tiles_written', '?')} written "
+                                   f"tiles differ"), \
+            {"unbudgeted": [f"tent {w[2]} m tall, {w[3]} m² at {w[0]},{w[1]} ({tile})" for tile, w in new][:40]}
     if k == "census":
         v, base = d[g["step"]], d[g["base_step"]]
         ok = (v["tents_n"] <= base["tents_n"] + b.get("tents_n", 0)

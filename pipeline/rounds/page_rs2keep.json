@@ -12,7 +12,8 @@
   "ramps_new": 0,
   "tents_n": 0,
   "tents_m2": 0,
-  "c_ii_m": 0
+  "c_ii_m": 0,
+  "tents_new": 0
  },
  "budget_note": "the lead's rule: no new places vs base; deck gap, tents and (c)(ii) no rise; ramps 0 new; every kept claim on a continuous LiDAR layer at its lifted height or with a reason (kept_reasons file, from the page editor)",
  "deck_zero_piece": {
@@ -152,6 +153,15 @@
     "p_drape"
    ],
    "base_drape": "work/drive_audit/page_drape/v1c_r6s2_r14s_lr3_rl1b"
+  },
+  {
+   "id": "p_tent_diff",
+   "tool": "tent_diff",
+   "drape": "step:p_drape",
+   "base_drape": "work/drive_audit/page_drape/v1c_r6s2_r14s_lr3_rl1b",
+   "after": [
+    "p_drape"
+   ]
   }
  ],
  "gates": [
@@ -196,6 +206,11 @@
    "id": "g_kept_lidar",
    "check": "kept_lidar",
    "step": "p_kept_lidar"
+  },
+  {
+   "id": "g_tent_diff",
+   "check": "tent_diff",
+   "step": "p_tent_diff"
   }
  ],
  "frames": {

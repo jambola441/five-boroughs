@@ -1,0 +1,34 @@
+{
+ "round": "Page round 3 companion: citywide tent check (tent_diff) for rs2keep, on page-rs2keep-1's drape",
+ "kind": "page_round",
+ "mode": "live",
+ "gates_only": true,
+ "budget": {
+  "tents_new": 0
+ },
+ "steps": [
+  {
+   "id": "p_drape",
+   "tool": "drape",
+   "tag": "v1c_r6s2_r14s_lr3_rl1k",
+   "use_existing": true,
+   "existing": "work/drive_audit/page_drape/v1c_r6s2_r14s_lr3_rl1k"
+  },
+  {
+   "id": "p_tent_diff",
+   "tool": "tent_diff",
+   "drape": "step:p_drape",
+   "base_drape": "work/drive_audit/page_drape/v1c_r6s2_r14s_lr3_rl1b",
+   "after": [
+    "p_drape"
+   ]
+  }
+ ],
+ "gates": [
+  {
+   "id": "g_tent_diff",
+   "check": "tent_diff",
+   "step": "p_tent_diff"
+  }
+ ]
+}

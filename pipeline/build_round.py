@@ -153,6 +153,7 @@ PAGE_OUT = {"drape": ["out", "tiles_written", "tiles_total"],
             "trace": ["out", "sites", "counts"], "lidar": ["out", "sites", "counts", "classes"],
             "census": ["out", "tents_n", "tents_m2", "overflow_polys"],
             "kept_lidar": ["out", "kept", "counts"],
+            "tent_diff": ["out", "n_new", "m2_new", "tiles_changed"],
             "census_rs": ["out", "tents_n", "tents_m2", "overflow_polys", "rs_whole_losses", "rs_keep_test"]}
 
 
@@ -171,6 +172,8 @@ def page_tasks(cfg):
         t += [node("frames_ready", "page", ["images", "request"], after=cfg["frames"].get("after", steps)),
               node("hydrogen_frames", "page", ["frames", "verdicts", "rows"], after=["frames_ready"], validated=True)]
         fr = ["hydrogen_frames"]
+    if cfg.get("gates_only"):   # a companion round: measured steps and gates only, reported with its main round
+        return t
     t += [node("page_accept", "page", ["rules_pass", "decision", "reasons", "class_rows", "next_steps"],
                after=steps + gates + fr, validated=True),
           node("lead_gate", "lead", ["approved_by", "decision", "class_rows", "bundle"], after=["page_accept"]),
