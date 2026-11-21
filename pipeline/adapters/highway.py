@@ -156,7 +156,9 @@ def main():
         # and the moved metres are reported beside the gate
         extra = "".join(f"; {lbl} {j[k]} m" for k, lbl in (("unsupported_deck_edge_m", "unsupported (new definition)"),
                                                            ("unsupported_old_def_m", "old definition"),
-                                                           ("overpass_edge_m", "moved to overpass edges")) if k in j)
+                                                           ("overpass_edge_m", "moved to overpass edges (>= 4.6 m clearance)"),
+                                                           ("low_clearance_edge_m", "low-clearance edges 1-4.6 m over a deck (still counted)"))
+                        if k in j)
         return respond(req, output={"pass": str(ok).lower(),
                                     "detail": f"new unsupported {u['unsupported']['m_approx']} m (max 10); new hanging "
                                               f"{u['hanging']['samples']}" + extra})
