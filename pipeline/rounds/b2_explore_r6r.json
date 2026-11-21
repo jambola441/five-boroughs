@@ -1,0 +1,71 @@
+{
+ "round": "B\u2033 lift rule, exploration round 2 (terrain r6r, 192 tiles around the round-1 sites)",
+ "kind": "page_rule_explore",
+ "mode": "explore",
+ "idea": "Make B\u2033 the page's lifting rule: a street polygon rides its deck whole when it overshoots the deck by 6 m or less, otherwise it is clipped (high decks) or blended (low decks). B\u2032 clips everything at the deck surface + 1 m.",
+ "baseline_rule": "B\u2032 (liftrule 3)",
+ "candidate_rule": "B\u2033",
+ "terrain_manifest": "work/terrain_study/p2/out/manifest_terrain_v1c_r6r_sha256.json",
+ "terrain_manifest_sha": "f1395a9b335756597d30e5f2eceb5ce78c41e23ca0ecb00db5020d3af1fed5e8",
+ "new_gone_list": "runs:b2-round2/new_b2_vs_b1.json",
+ "totals_source": "this fork's own drive scan of 192 tiles (da_city.py, drape frame), B\u2032 = the drive test's r6r drape",
+ "totals": {
+  "car_steps_2m": [
+   550,
+   560
+  ],
+  "lost_contact_flags": [
+   17581,
+   17135
+  ]
+ },
+ "budget": {
+  "marginal_step_max_m": 2.5,
+  "marginal_steps_new_places": 10,
+  "visible_drivable_ends_delta": 0,
+  "car_ledges_2m_delta": 5,
+  "car_steps_2m_delta": 30,
+  "curbs_km_delta": 0.5,
+  "car_raised_flags_delta": 3000
+ },
+ "debt": [
+  {
+   "name": "Bruckner Blvd NB entrance from Havemeyer Ave: 12.43 m step (B\u2033 fixes lost contact there but adds this)",
+   "x": 11606,
+   "z": -6688,
+   "radius_m": 90,
+   "pay_back": "next exploration round"
+  },
+  {
+   "name": "Cross Bronx Expy 41113 lost contact at the #6 site",
+   "x": 8453,
+   "z": -7776,
+   "radius_m": 30,
+   "pay_back": "expected fixed by the stacked-claim fix (reslocal)"
+  }
+ ],
+ "target_fixed": [
+  {
+   "name": "Mill Basin Bridge 5.04 m",
+   "x": 6992,
+   "z": 18195
+  },
+  {
+   "name": "Mill Basin Bridge 5.03 m",
+   "x": 6977,
+   "z": 18246
+  },
+  {
+   "name": "Roosevelt Ave Bridge 3.86 m",
+   "x": 12096,
+   "z": 1214
+  }
+ ],
+ "expires": "2026-11-28",
+ "max_rounds": 3,
+ "known_gaps": [
+  "Covers 192 tiles around the round-1 sites, not the whole city.",
+  "No frames yet, so no Hydrogen review.",
+  "Budget is round 1's, declared before these r6r numbers were measured."
+ ]
+}

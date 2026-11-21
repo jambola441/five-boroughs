@@ -31,6 +31,9 @@ def validate(req, passed):
 
 
 def project(rel):
+    """A project path relative to NYC_ROOT, or 'runs:<path>' relative to PIPELINE_RUNS (earlier runs' outputs)."""
+    if rel.startswith("runs:"):
+        return os.path.join(os.environ.get("PIPELINE_RUNS", os.path.dirname(OUT)), rel[len("runs:"):])
     if not ROOT:
         raise RuntimeError("NYC_ROOT is not set")
     return os.path.join(ROOT, rel)
