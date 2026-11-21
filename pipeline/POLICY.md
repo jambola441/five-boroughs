@@ -39,3 +39,16 @@ A round's code (code_pin) and its round file (gates, budgets, switches) are froz
 goes to the next round. Two exceptions, both recorded in the run's round.json under "changes": the lead's own
 decisions on that round's verdict (a debt entry, a baseline correction), and policy entries the graph adds.
 The lead may always stop a round.
+
+## Working the decision queue (every owner: lead, coordinators, check owners)
+Decisions wait in `$PIPELINE_RUNS/_queue`; nobody is sent them. Each owner keeps one doorbell so a quiet session
+still hears about its work:
+1. **Doorbell**: keep exactly one background task running
+   `decisions.py wait --owner OWNER` (default: ring 120 s after new items appear, remind every 15 min while
+   items stay open). It exits with a count only, never item text. Restart it as the last step after working
+   the queue.
+2. **A ring is a reminder, not a task.** If it rings mid-work, finish that work first; pull only when you have
+   nothing else open.
+3. **One item at a time**: `decisions.py next --owner OWNER` hands you one item (refused while you hold an
+   unanswered one); answer it (`decisions.py answer ID CHOICE --by OWNER`), or `release` it, then take the next,
+   until nothing is waiting.
