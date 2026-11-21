@@ -183,7 +183,7 @@ def sync_queue(run_dir):
         if it["version"] != Dq.version(run_dir):   # never apply an answer to a round that changed under it
             it["status"], it["closed_why"] = "stale", "the round changed after the item was raised"
             Dq.save(it)
-            event(name, "queue", item=it["id"], what="stale")
+            event(name, "queue", item=it["id"], change="stale")
             continue
         a = it["answer"]
         note = f"{a['by']}: {a.get('note', '')}".strip()
@@ -211,7 +211,7 @@ def close_retired():
     for it in Dq.items():
         if it["status"] == "open" and os.path.exists(os.path.join(RUNS, it["run"], "RETIRED")):
             Dq.close(it, "the run was retired")
-            event(it["run"], "queue", item=it["id"], what="closed: run retired")
+            event(it["run"], "queue", item=it["id"], change="closed: run retired")
 
 
 def tick():
