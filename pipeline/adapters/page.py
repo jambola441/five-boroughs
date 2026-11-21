@@ -316,6 +316,16 @@ def gate(cfg, g, d):
         at = lambda r: {"x": r["c"][0], "z": r["c"][1]}
         fails = [r for r in rows if r.get("cls") == "FAIL"]
         bad = [r for r in fails if not near(at(r), [dict(q, radius_m=5) for q in rs], 5)]
+        # the lead: slivers are defects. A sliver point the variant draws > 2 m above the base fails the round unless
+        # it has a reason. Needs each row's `slivers` list [[x, z, h_variant, h_base], ...]; a sliver count with no
+        # list can't be checked, so it fails closed.
+        spikes, unlisted = [], []
+        for r in rows:
+            if r.get("sliver") and "slivers" not in r:
+                unlisted.append(r)
+            for x, z, h, hb in r.get("slivers") or []:
+                if h - hb > 2 and not near({"x": x, "z": z}, [dict(q, radius_m=5) for q in rs], 5):
+                    spikes.append((r, x, z, h, hb))
         by = {}
         for r in rows: by[r.get("cls", "?")] = by.get(r.get("cls", "?"), 0) + 1
         # the lead (option c): a PASS on only 1-2 raised points counts as D for the cap; a 1-2-point FAIL stays a FAIL
@@ -324,7 +334,9 @@ def gate(cfg, g, d):
         raised = by_cap.get("PASS", 0) + by_cap.get("FAIL", 0) + by_cap.get("D", 0)   # NOLIFT doesn't count
         d_share = by_cap.get("D", 0) / raised if raised else 0.0
         unsure = d_share > 0.2   # the lead: too much of the rule unverified -> uncertain, blocks
-        return (not bad and not unsure), (("UNCERTAIN (blocks): " if unsure else "")
+        return (not bad and not unsure and not spikes and not unlisted), (("UNCERTAIN (blocks): " if unsure else "")
+                + (f"{len(spikes)} new sliver spikes > 2 m without a reason; " if spikes else "")
+                + (f"{len(unlisted)} claims with slivers but no sliver locations logged (fails closed); " if unlisted else "")
                 + f"{len(rows)} kept claims: {by}; {len(fails)} FAIL, {len(fails) - len(bad)} of them with a reason; "
                 f"D for the cap {by_cap.get('D', 0)} of {raised} that raised anything = {d_share:.0%} (cap 20 %; "
                 f"includes {small_pass} PASS on only 1-2 points); verdicts on only 1-2 raised points: "
@@ -332,8 +344,10 @@ def gate(cfg, g, d):
                 f"{sum(1 for r in rows if r.get('small') and r.get('cls') == 'FAIL')} FAIL); sliver points (raised "
                 f"alone, not counted as evidence): {sum(int(r.get('sliver') or 0) for r in rows)} on "
                 f"{sum(1 for r in rows if r.get('sliver'))} claims"), \
-            {"unbudgeted": [f"FAIL at {r['c'][0]:.0f},{r['c'][1]:.0f}: {r.get('match')}/{r.get('n')} raised points on "
-                            f"LiDAR" for r in bad][:30]}
+            {"unbudgeted": ([f"FAIL at {r['c'][0]:.0f},{r['c'][1]:.0f}: {r.get('match')}/{r.get('n')} raised points on "
+                             f"LiDAR" for r in bad]
+                            + [f"sliver spike {h - hb:.1f} m at {x:.1f},{z:.1f} (claim at {r['c'][0]:.0f},{r['c'][1]:.0f}; "
+                               f"variant {h:.1f} m, base {hb:.1f} m)" for r, x, z, h, hb in spikes])[:40]}
     if k == "census":
         v, base = d[g["step"]], d[g["base_step"]]
         ok = (v["tents_n"] <= base["tents_n"] + b.get("tents_n", 0)
