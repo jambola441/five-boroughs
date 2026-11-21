@@ -1,9 +1,9 @@
 {
- "round": "Page round 3: rule-2 same-deck keep (rs2keep) on B′ + reslocal=1, r6s2 + r14s",
+ "round": "Page round 3: rule-2 same-deck keep (rs2keep, loser >= 5 m²) on B′ + reslocal=1, r6s2 + r14s",
  "kind": "page_round",
  "mode": "live",
  "accept": "explore",
- "idea": "In resolve() rule 2, the loser keeps its claim (both ride that deck) when its deck line shares at least one segment id with the winner's and the loser's score >= 0.5; after reslocal's local exclusion. Dry count (r6r rs census, reslocal=1): 246 whole rule-2 losses, 107 meet the test (fewer kept in practice: order effects).",
+ "idea": "In resolve() rule 2, the loser keeps its claim (both ride that deck) when its deck line shares at least one segment id with the winner's and the loser's score >= 0.5; after reslocal's local exclusion; the loser polygon must also have >= 5 m² plan area (no sliver polygons riding a deck). Dry count (r6r rs census, reslocal=1): 246 whole rule-2 losses, 107 meet the test (fewer kept in practice: order effects).",
  "question": "Does keeping same-deck rule-2 losers remove the reslocal=1 rule-2 steps (960 m of 1,357 m citywide in round 1) without new places, deck gap, ramps or tents?",
  "budget": {
   "new_step_places": 0,
@@ -15,7 +15,7 @@
   "c_ii_m": 0,
   "tents_new": 0
  },
- "budget_note": "the lead's rule: no new places vs base; deck gap, tents and (c)(ii) no rise; ramps 0 new; every kept claim on a continuous LiDAR layer at its lifted height or with a reason (kept_reasons file, from the page editor)",
+ "budget_note": "the lead's rule: no new places vs base; deck gap, tents and (c)(ii) no rise; ramps 0 new; every kept claim on a continuous LiDAR layer at its lifted height or with a reason (kept_reasons file, from the page editor); sliver spikes fail only off continuous LiDAR (lead, revised)",
  "deck_zero_piece": {
   "name": "Cross Bronx Expressway",
   "x": 8445.6,
@@ -28,7 +28,7 @@
   {
    "id": "p_drape",
    "tool": "drape",
-   "tag": "v1c_r6s2_r14s_lr3_rl1k",
+   "tag": "v1c_r6s2_r14s_lr3_rl1k2",
    "base": "v1c_r6s2_r14s_lr3_rl1b",
    "LIFTRULE": 3,
    "RESLOCAL": 1,
@@ -39,7 +39,7 @@
   {
    "id": "p_lift_gate",
    "tool": "lift_gate",
-   "tag": "v1c_r6s2_r14s_lr3_rl1k",
+   "tag": "v1c_r6s2_r14s_lr3_rl1k2",
    "drape": "step:p_drape",
    "after": [
     "p_drape"
@@ -84,7 +84,7 @@
   {
    "id": "p_ramps",
    "tool": "ramps",
-   "tag": "v1c_r6s2_r14s_lr3_rl1k",
+   "tag": "v1c_r6s2_r14s_lr3_rl1k2",
    "TERV": "v1c_r6s2",
    "after": [
     "p_drape"
@@ -235,5 +235,8 @@
  "expires": "2026-11-28",
  "max_rounds": 3,
  "success_measure": "rule-2 new-step metres in this round's trace (per_class rule2 step_m) vs the 960 m rule-2 base of round 1 (r6r citywide; r6s2 959.9 m)",
- "kept_reasons": "pe:data/census/rs2keep_kept_reasons.json"
+ "kept_reasons": "pe:data/census/rs2keep_kept_reasons.json",
+ "require_sha": {
+  "pe:phaseb/setd_core.mjs": "9b15509dd672e20dcff39bef6004a5d612e467c4e8b0f97154321108d3da0f6d"
+ }
 }

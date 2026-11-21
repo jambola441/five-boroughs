@@ -181,9 +181,30 @@ def page_tasks(cfg):
     return t
 
 
+FINAL_ACCEPT = ("page_accept", "qa_accept", "highway_accept", "explore_accept")
+
+
+def freeze(cfg, tasks):
+    """The lead's code-freeze rule: code_pin before every root step, code_verify after every measuring step and
+    before the final accept (or last, in a gates-only round)."""
+    if cfg.get("kind") not in ("page_round", "terrain_round_live", "highway_round"):
+        return tasks
+    for t in tasks:
+        if not t.get("depends_on"):
+            t["depends_on"] = ["code_pin"]
+    tail = {"lead_gate", "register_update", *FINAL_ACCEPT}
+    measured = [t["id"] for t in tasks if t["id"] not in tail]
+    for t in tasks:
+        if t["id"] in FINAL_ACCEPT:
+            t["depends_on"] = list(t.get("depends_on") or []) + ["code_verify"]
+    return ([node("code_pin", "codepin", ["pass", "detail"], validated=True)] + tasks
+            + [node("code_verify", "codepin", ["pass", "detail"], after=measured, validated=True)])
+
+
 def write_plan(out, cfg, tasks):
+    tasks = freeze(cfg, tasks)
     providers = {p: {"command": [PY, "-I", os.path.join(HERE, "adapters", p + ".py")], "env": ENV}
-                 for p in ("terrain", "qa", "lead", "explore", "round_live", "highway", "page")}
+                 for p in ("terrain", "qa", "lead", "explore", "round_live", "highway", "page", "codepin")}
     plan = {"api_version": "swarm/v1", "name": "round: " + cfg["round"], "max_tasks": len(tasks) + 2,
             "providers": providers, "tasks": tasks}
     json.dump(plan, open(os.path.join(out, "plan.json"), "w"), indent=1)
