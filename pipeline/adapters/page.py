@@ -334,8 +334,8 @@ def gate(cfg, g, d):
         for r in rows:
             if r.get("sliver") and "slivers" not in r:
                 unlisted.append(r)
-            for x, z, h, hb in r.get("slivers") or []:
-                if h - hb > 2 and not near({"x": x, "z": z}, [dict(q, radius_m=5) for q in rs], 5):
+            for x, z, h, hb in r.get("slivers") or []:   # hb None: the base draws nothing there -> counts as a spike
+                if (hb is None or h - hb > 2) and not near({"x": x, "z": z}, [dict(q, radius_m=5) for q in rs], 5):
                     spikes.append((r, x, z, h, hb))
         by = {}
         for r in rows: by[r.get("cls", "?")] = by.get(r.get("cls", "?"), 0) + 1
@@ -357,8 +357,9 @@ def gate(cfg, g, d):
                 f"{sum(1 for r in rows if r.get('sliver'))} claims"), \
             {"unbudgeted": ([f"FAIL at {r['c'][0]:.0f},{r['c'][1]:.0f}: {r.get('match')}/{r.get('n')} raised points on "
                              f"LiDAR" for r in bad]
-                            + [f"sliver spike {h - hb:.1f} m at {x:.1f},{z:.1f} (claim at {r['c'][0]:.0f},{r['c'][1]:.0f}; "
-                               f"variant {h:.1f} m, base {hb:.1f} m)" for r, x, z, h, hb in spikes])[:40]}
+                            + [(f"sliver spike {h - hb:.1f} m" if hb is not None else "sliver where the base draws nothing")
+                               + f" at {x:.1f},{z:.1f} (claim at {r['c'][0]:.0f},{r['c'][1]:.0f}; variant {h:.1f} m, base "
+                               + (f"{hb:.1f} m)" if hb is not None else "none)") for r, x, z, h, hb in spikes])[:40]}
     if k == "tent_diff":   # new tents anywhere the variant wrote a tile
         j = json.load(open(d[g["step"]]["out"]))
         t, lim = j["total"], b.get("tents_new", 0)
