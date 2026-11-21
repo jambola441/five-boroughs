@@ -29,6 +29,7 @@ PE, DA = "pe:", f"{W}/drive_audit"
 NODE = "/opt/homebrew/bin/node"
 MIN_FREE_GB = 10
 IMG = (".jpg", ".jpeg", ".png")
+HYD_PARALLEL = 4   # Hydrogen calls at once
 
 
 class Waiting(Exception):
@@ -348,18 +349,37 @@ def hydrogen_frames(cfg):
     sites = {}
     for n in sorted(x for x in os.listdir(folder) if x.lower().endswith(IMG)):
         sites.setdefault(os.path.splitext(n)[0].split("__")[0], []).append(n)
-    rows = []
-    for site, files in sites.items():
-        tag = "page_" + re.sub(r"[^A-Za-z0-9_.-]", "_", site)
+    import time
+    from common import Running
+    t0, rows, waiting = time.time(), [], 0
+    jobs = os.path.join(OUT, "jobs")
+    state = lambda tag: ("done" if os.path.exists(os.path.join(jobs, "hydrogen_" + tag, "rc")) else
+                         "running" if os.path.exists(os.path.join(jobs, "hydrogen_" + tag, "job.json")) else "new")
+    tags = {site: "page_" + re.sub(r"[^A-Za-z0-9_.-]", "_", site) for site in sites}
+    for site, files in sites.items():   # at most HYD_PARALLEL Hydrogen calls at once; never block past the deadline
+        tag = tags[site]
+        st = state(tag)
+        if st != "done":
+            running = sum(state(t) == "running" for t in tags.values())
+            if st == "new" and running >= HYD_PARALLEL:
+                waiting += 1
+                continue
         if len(files) == 1:
             where, panels = "", ", ".join(names)
         else:
             where = "The images are the panels in this order: " + "; ".join(
                 f"{f} = {names[i] if i < len(names) else 'panel ' + str(i + 1)}" for i, f in enumerate(files)) + "."
             panels = ", ".join(names[:len(files)])
-        v = hydrogen_review(tag, [(f, os.path.join(folder, f)) for f in files], where, ask=PAGE_ASK.format(panels=panels))
+        try:
+            v = hydrogen_review(tag, [(f, os.path.join(folder, f)) for f in files], where,
+                                ask=PAGE_ASK.format(panels=panels), wait=max(0, 60 - (time.time() - t0)))
+        except Running:
+            waiting += 1
+            continue
         rows.append({"site": site, "files": files, "verdict": v.get("verdict", ""), "fixed": v.get("fixed_vs_first", []),
                      "new": v.get("new_vs_first", []), "seconds": v["seconds"]})
+    if waiting:
+        raise Running(f"job running: Hydrogen, {len(rows)} of {len(sites)} sites reviewed")
     json.dump(rows, open(os.path.join(OUT, "hydrogen_frames.json"), "w"), indent=1)
     by = {}
     for r in rows:

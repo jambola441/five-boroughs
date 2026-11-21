@@ -51,7 +51,7 @@ def drive_gate(cfg):
     }
 
 
-def hydrogen_review(name, images, where, ask=ASK):
+def hydrogen_review(name, images, where, ask=ASK, wait=None):
     """One Hydrogen look at a few frames, as a detached job (agy can take minutes; steps end at 120 s).
     images: [(name_in_folder, source_path)]. The folder holds copies of the frames only; agy may read nothing else.
     Returns the parsed verdict dict plus seconds; raises Running while agy works."""
@@ -65,7 +65,8 @@ def hydrogen_review(name, images, where, ask=ASK):
            "of them with your file/image viewing tool. Do not run shell commands and do not open any other files.")
     rc = run_job("hydrogen_" + name, ["agy", "-p", pre + "\n\n" + ask, "--model", HYDROGEN, "--add-dir", d,
                                       "--settings", '{"permissions":{"deny":["command(*)"]}}', "--print-timeout",
-                                      "600s", "--output-format", "json"], d, f"hydrogen/{name}/agy_stdout.json")
+                                      "600s", "--output-format", "json"], d, f"hydrogen/{name}/agy_stdout.json",
+                 **({} if wait is None else {"wait": wait}))
     rec = json.load(open(os.path.join(OUT, "jobs", "hydrogen_" + name, "job.json")))
     try:
         j = json.load(open(os.path.join(d, "agy_stdout.json")))
