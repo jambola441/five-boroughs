@@ -32,6 +32,16 @@
    "z": -7776,
    "radius_m": 30,
    "pay_back": "stacked-claim fix (reslocal=1)"
+  },
+  {
+   "name": "Bronx Blvd deck sidewalk #1, tile x19_z-25: B″ grows an existing tent site (2 -> 4 tents, +0.9 m²)",
+   "x": 9505.5,
+   "z": -12251,
+   "radius_m": 30,
+   "tents_n": 2,
+   "tents_m2": 0.9,
+   "pay_back": "next exploration round, or with the tents class fix",
+   "added_by": "lead, 2026-11-21"
   }
  ],
  "target_fixed": [
@@ -223,7 +233,11 @@
    "Mill Basin Bridge 5.03 m",
    "Roosevelt Ave Bridge 3.86 m",
    "Havemeyer Ave / Bruckner NB entrance (12.43 m debt)",
-   "Cross Bronx #6 site (debt)"
+   "Cross Bronx #6 site (debt)",
+   "Bronx Blvd deck sidewalk tent site (tile x19_z-25, 9505.5, -12251): debt"
   ]
- }
+ },
+ "changes": [
+  "2026-11-21: tent site added to the debt list and the frames by the lead; tent gate re-evaluated"
+ ]
 }

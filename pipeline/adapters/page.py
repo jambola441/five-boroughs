@@ -384,9 +384,12 @@ def gate(cfg, g, d):
             {"unbudgeted": [f"tent {w[2]} m tall, {w[3]} m² at {w[0]},{w[1]} ({tile})" for tile, w in new][:40]}
     if k == "census":
         v, base = d[g["step"]], d[g["base_step"]]
-        ok = (v["tents_n"] <= base["tents_n"] + b.get("tents_n", 0)
-              and v["tents_m2"] <= base["tents_m2"] + b.get("tents_m2", 0))
-        return ok, f"tents {v['tents_n']} / {v['tents_m2']} m² vs base {base['tents_n']} / {base['tents_m2']} m²", {}
+        dn = sum(e.get("tents_n", 0) for e in cfg.get("debt", []))      # tents the lead put on the debt list
+        dm = sum(e.get("tents_m2", 0) for e in cfg.get("debt", []))
+        ok = (v["tents_n"] - dn <= base["tents_n"] + b.get("tents_n", 0)
+              and v["tents_m2"] - dm <= base["tents_m2"] + b.get("tents_m2", 0) + 1e-6)
+        return ok, (f"tents {v['tents_n']} / {v['tents_m2']} m² vs base {base['tents_n']} / {base['tents_m2']} m²"
+                    + (f"; {dn} tents / {dm} m² on the debt list" if dn or dm else "")), {}
     if k == "lift":
         v, base = d[g["step"]], d[g["base_step"]]
         rows = [(f, v[f], base[f], b.get(f, 0)) for f in g.get("fields", ("visible_drivable_new", "lost_contact_flags"))]
