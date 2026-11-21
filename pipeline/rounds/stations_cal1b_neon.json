@@ -1,0 +1,174 @@
+{
+ "round": "Stations calibration 1B: the same 10 complexes on agy Gemini 4 Neon (A/B vs run A on Claude Opus 5.5)",
+ "kind": "research_swarm",
+ "note": "owner: 'Yes, run the Neon A/B' (2026-11-21); content by the stations coordinator (calibration_neon/, per-complex source rule as in run A)",
+ "engine": "agy",
+ "fix": true,
+ "root": "work/walkable_stations/calibration_neon",
+ "lanes": [
+  [
+   "321",
+   "14"
+  ],
+  [
+   "262",
+   "241"
+  ],
+  [
+   "81",
+   "431"
+  ],
+  [
+   "626",
+   "625"
+  ],
+  [
+   "46",
+   "300"
+  ]
+ ],
+ "vars": {
+  "321": {
+   "COMPLEX_ID": "321",
+   "NAME": "18 St",
+   "LANE": 1,
+   "TURN": 1,
+   "PATTERN": "P1_platform_fare",
+   "_brief_main": "brief_main_oldrule.md",
+   "_brief_helpers": "brief_helpers_oldrule.md",
+   "_conventions": "conventions_oldrule.md"
+  },
+  "14": {
+   "COMPLEX_ID": "14",
+   "NAME": "23 St",
+   "LANE": 1,
+   "TURN": 2,
+   "PATTERN": "P1_platform_fare",
+   "_brief_main": "brief_main_oldrule.md",
+   "_brief_helpers": "brief_helpers_oldrule.md",
+   "_conventions": "conventions_oldrule.md"
+  },
+  "262": {
+   "COMPLEX_ID": "262",
+   "NAME": "67 Av",
+   "LANE": 2,
+   "TURN": 1,
+   "PATTERN": "P2_ind_mezzanine",
+   "_brief_main": "brief_main_oldrule.md",
+   "_brief_helpers": "brief_helpers_oldrule.md",
+   "_conventions": "conventions_oldrule.md"
+  },
+  "241": {
+   "COMPLEX_ID": "241",
+   "NAME": "15 St-Prospect Park",
+   "LANE": 2,
+   "TURN": 2,
+   "PATTERN": "P2_ind_mezzanine",
+   "_brief_main": "brief_main.md",
+   "_brief_helpers": "brief_helpers.md",
+   "_conventions": "conventions.md"
+  },
+  "81": {
+   "COMPLEX_ID": "81",
+   "NAME": "111 St",
+   "LANE": 3,
+   "TURN": 1,
+   "PATTERN": "P3_el_house",
+   "_brief_main": "brief_main_oldrule.md",
+   "_brief_helpers": "brief_helpers_oldrule.md",
+   "_conventions": "conventions_oldrule.md"
+  },
+  "431": {
+   "COMPLEX_ID": "431",
+   "NAME": "Intervale Av",
+   "LANE": 3,
+   "TURN": 2,
+   "PATTERN": "P3_el_house",
+   "_brief_main": "brief_main_oldrule.md",
+   "_brief_helpers": "brief_helpers_oldrule.md",
+   "_conventions": "conventions_oldrule.md"
+  },
+  "626": {
+   "COMPLEX_ID": "626",
+   "NAME": "Botanic Garden / Franklin Av-Medgar Evers College",
+   "LANE": 4,
+   "TURN": 1,
+   "PATTERN": "P5_transfer",
+   "_brief_main": "brief_main_oldrule.md",
+   "_brief_helpers": "brief_helpers_oldrule.md",
+   "_conventions": "conventions_oldrule.md"
+  },
+  "625": {
+   "COMPLEX_ID": "625",
+   "NAME": "Delancey St-Essex St",
+   "LANE": 4,
+   "TURN": 2,
+   "PATTERN": "P5_transfer",
+   "_brief_main": "brief_main.md",
+   "_brief_helpers": "brief_helpers.md",
+   "_conventions": "conventions.md"
+  },
+  "46": {
+   "COMPLEX_ID": "46",
+   "NAME": "Cortelyou Rd",
+   "LANE": 5,
+   "TURN": 1,
+   "PATTERN": "P4_opencut_house",
+   "_brief_main": "brief_main_oldrule.md",
+   "_brief_helpers": "brief_helpers_oldrule.md",
+   "_conventions": "conventions_oldrule.md"
+  },
+  "300": {
+   "COMPLEX_ID": "300",
+   "NAME": "191 St",
+   "LANE": 5,
+   "TURN": 2,
+   "PATTERN": "P6_deep_elevator",
+   "_brief_main": "brief_main_oldrule.md",
+   "_brief_helpers": "brief_helpers_oldrule.md",
+   "_conventions": "conventions_oldrule.md"
+  }
+ },
+ "conventions": "conventions.md",
+ "read_dirs": [
+  "work/walkable_stations",
+  "subways"
+ ],
+ "deny_read": [
+  "pe:",
+  "work/walkable_stations/calibration/cards",
+  "work/walkable_stations/calibration/helpers"
+ ],
+ "main": {
+  "brief": "brief_main.md",
+  "writes": [
+   "cards/cx_{id}.json",
+   "cards/cx_{id}.md"
+  ],
+  "model": "gemini-4-neon-high",
+  "output_note": "ENGINE NOTES (this run is agy). Your working folder holds copies of your two card files: edit cx_{COMPLEX_ID}.json and cx_{COMPLEX_ID}.md there, in place; the graph copies them back into cards/. You cannot write anywhere else. You have no helper mechanism inside your turn: the graph ran helper (a) before you (its findings file is named below) and runs helper (b) after you; then a fix pass gives you its contradictions and the gate's result. You cannot run check_card.py (the gate runs after you): follow conventions.md exactly. Your terminal runs in a sandbox: use curl to fetch web pages and photos into your working folder and open them with your file viewer to look at them; they are deleted after the turn and are not saved sources (cite the page URL). Never fetch Google Maps, Street View or Google-hosted photos. Your structured output carries the brief's turn output block: card = CARD, summary = the 3 SUMMARY lines joined with newlines, conf_counts = FACTS_CONF, hints_conf = HINTS_CONF, open_questions, minutes = MINUTES, helpers = HELPERS, check = 'not run (gate runs after the turn)'."
+ },
+ "helpers": [
+  {
+   "id": "photo",
+   "brief": "brief_helpers.md#Rules for both helpers+(a) Photo",
+   "when": "before",
+   "model": "gemini-4-neon-high",
+   "output_note": "ENGINE NOTES (this run is agy). You write nothing that matters: your working folder is scratch and is deleted. Use curl in your sandboxed terminal to fetch pages and photos there and open them with your file viewer to look at them. Never fetch Google Maps, Street View or Google-hosted photos (so: no screenshots; say so in NOT_FOUND). Return your answer as the structured JSON: findings[] (what, value, src, conf, one per FINDINGS item), contradictions[] (one line each), notes (SOURCES_VIEWED, NOT_FOUND, OPEN_QUESTIONS and MINUTES as text)."
+  },
+  {
+   "id": "facts",
+   "brief": "brief_helpers.md#Rules for both helpers+(b) Fact checker",
+   "when": "after",
+   "model": "gemini-4-neon-high",
+   "output_note": "ENGINE NOTES (this run is agy). You write nothing that matters: your working folder is scratch and is deleted. Use curl in your sandboxed terminal to fetch pages and photos there and open them with your file viewer to look at them. Never fetch Google Maps, Street View or Google-hosted photos (so: no screenshots; say so in NOT_FOUND). Return your answer as the structured JSON: findings[] (what, value, src, conf, one per FINDINGS item), contradictions[] (one line each), notes (SOURCES_VIEWED, NOT_FOUND, OPEN_QUESTIONS and MINUTES as text)."
+  }
+ ],
+ "check": [
+  "{NYC_ROOT}/.venv/bin/python",
+  "-I",
+  "{NYC_ROOT}/work/walkable_stations/calibration_neon/check_card.py",
+  "{card}"
+ ],
+ "workers": 12
+}

@@ -45,15 +45,22 @@ def root(cfg):
 
 def brief(cfg, ref):
     """ref = 'file.md' or 'file.md#Heading': the whole file or one '#'-heading section of it."""
-    f, _, sec = ref.partition("#")
+    f, _, secs = ref.partition("#")
     t = open(os.path.join(root(cfg), f)).read()
-    if not sec:
+    if not secs:
         return t
-    parts = re.split(r"(?m)^(#+ .*)$", t)
-    for i in range(1, len(parts), 2):
-        if sec.lower() in parts[i].lower():
-            return parts[i] + parts[i + 1]
-    raise RuntimeError(f"no section '{sec}' in {f}")
+    parts, out = re.split(r"(?m)^(#+ .*)$", t), []
+    for sec in secs.split("+"):   # 'file.md#Rules+(a) Photo': several sections, in this order
+        hit = [parts[i] + parts[i + 1] for i in range(1, len(parts), 2) if sec.lower() in parts[i].lower()]
+        if not hit:
+            raise RuntimeError(f"no section '{sec}' in {f}")
+        out.append(hit[0])
+    return "\n".join(out)
+
+
+def item_ref(cfg, item, key, default):
+    """A per-item override of a brief or conventions file (vars[item]['_<key>']), else the round's default."""
+    return (cfg.get("vars", {}).get(item) or {}).get("_" + key) or default
 
 
 def fill(cfg, item, text):
@@ -246,7 +253,8 @@ def main():
                + (" (copies of the cards in " + root(cfg) + "/cards, already in your working folder: edit them in place; "
                   "the graph copies them back)" if agy else "") + "."]
         if cfg.get("conventions"):
-            ctx.append(f"Read {os.path.join(root(cfg), cfg['conventions'])} first: it is the shared rulebook, read-only.")
+            conv = item_ref(cfg, item, "conventions", cfg["conventions"])
+            ctx.append(f"Read {os.path.join(root(cfg), conv)} first: it is the shared rulebook, read-only.")
         for h in cfg.get("helpers", []):
             if h.get("when", "before") == "before":
                 ctx.append(f"A helper's findings for this item ({h['id']}) are in {root(cfg)}/helpers/{item}__{h['id']}.json: "
@@ -256,8 +264,8 @@ def main():
             ctx.append(f"The previous item in your lane was {prev} (its card: {root(cfg)}/{item_files(cfg, prev)[0]}); its summary: "
                        f"{pm.get('summary', '')[:600]}. Reuse what you learned about sources and conventions.")
         if cfg["main"].get("output_note"):
-            ctx.append(cfg["main"]["output_note"])
-        prompt = fill(cfg, item, brief(cfg, cfg["main"]["brief"])) + "\n\n" + "\n".join(ctx)
+            ctx.append(fill(cfg, item, cfg["main"]["output_note"]))
+        prompt = fill(cfg, item, brief(cfg, item_ref(cfg, item, "brief_main", cfg["main"]["brief"]))) + "\n\n" + "\n".join(ctx)
         out, cost, mins, denied = agent(f"{item}__main", prompt, cfg, cfg["main"].get("model", "claude-opus-5-5"),
                                         cfg["main"].get("budget_usd", 5), MAIN_SCHEMA, writes=item_files(cfg, item),
                                         bash=[fill(cfg, item, b) for b in cfg["main"].get("bash_allow", [])],
@@ -281,8 +289,8 @@ def main():
         base = {"gate_before": ("PASS " if gate[0] else "FAIL ") + gate[1][:300], "contradictions_in": len(contra)}
         if gate[0] and not contra:
             return respond(req, output={**base, "ran": "false", "minutes_wall": 0, "cost_usd": 0, "tokens": 0})
-        prompt = (fill(cfg, item, brief(cfg, cfg["main"]["brief"])) + "\n\nFIX PASS for item " + item + ". "
-                  + (cfg["main"].get("output_note") or "") + "\nThe gate (check_card.py) said:\n" + gate[1][:2000]
+        prompt = (fill(cfg, item, brief(cfg, item_ref(cfg, item, "brief_main", cfg["main"]["brief"]))) + "\n\nFIX PASS for item " + item + ". "
+                  + fill(cfg, item, cfg["main"].get("output_note") or "") + "\nThe gate (check_card.py) said:\n" + gate[1][:2000]
                   + "\nThe fact checker returned these contradictions (resolve each: correct it, or record the "
                   "conflict and add an open question):\n" + "\n".join("- " + c for c in contra)[:6000]
                   + "\nEdit the card in your working folder until the gate would pass, then return the turn output.")
@@ -296,10 +304,15 @@ def main():
     h = next(x for x in cfg.get("helpers", []) if x["id"] == part)
     ctx = [f"Item: {item}. You only read and report; you write nothing."]
     if cfg.get("conventions"):
-        ctx.append(f"Shared rules: {cfg['conventions']} (read-only).")
+        ctx.append(f"Shared rules: {os.path.join(root(cfg), item_ref(cfg, item, 'conventions', cfg['conventions']))} (read-only).")
+    if h.get("output_note"):
+        ctx.append(fill(cfg, item, h["output_note"]))
     if h.get("when") == "after":
-        ctx.append(f"Check the researched files for this item: {', '.join(item_files(cfg, item))}.")
-    prompt = fill(cfg, item, brief(cfg, h["brief"])) + "\n\n" + "\n".join(ctx)
+        ctx.append(f"Check the researched files for this item: {', '.join(os.path.join(root(cfg), f) for f in item_files(cfg, item))}.")
+    hb = h["brief"]
+    if item_ref(cfg, item, "brief_helpers", None):   # same sections, the item's own helper file
+        hb = item_ref(cfg, item, "brief_helpers", None) + "#" + hb.partition("#")[2]
+    prompt = fill(cfg, item, brief(cfg, hb)) + "\n\n" + "\n".join(ctx)
     out, cost, mins, denied = agent(f"{item}__{part}", prompt, cfg, h.get("model", "claude-sonnet-5-5"),
                                     h.get("budget_usd", 2), HELPER_SCHEMA)
     os.makedirs(os.path.join(root(cfg), "helpers"), exist_ok=True)

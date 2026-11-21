@@ -1,0 +1,50 @@
+{
+ "round": "Stations calibration 1, re-run of 241 (its helper's card write was denied)",
+ "kind": "research_swarm",
+ "note": "owner-approved calibration (2026-11-21); content by the stations coordinator (calibration/complexes.json, briefs, check_card.py); measures minutes, cost and card quality per complex before the 445-complex swarm",
+ "root": "work/walkable_stations/calibration",
+ "lanes": [
+  [
+   "241"
+  ]
+ ],
+ "vars": {
+  "241": {
+   "COMPLEX_ID": "241",
+   "NAME": "15 St-Prospect Park",
+   "LANE": 2,
+   "TURN": 2,
+   "PATTERN": "P2_ind_mezzanine"
+  }
+ },
+ "conventions": "conventions.md",
+ "read_dirs": [
+  "work/walkable_stations",
+  "subways"
+ ],
+ "web": true,
+ "main": {
+  "brief": "brief_main.md",
+  "writes": [
+   "cards/cx_{id}.json",
+   "cards/cx_{id}.md"
+  ],
+  "model": "claude-opus-5-5",
+  "budget_usd": 10,
+  "subagents": true,
+  "bash_allow": [
+   "date",
+   "{NYC_ROOT}/.venv/bin/python -I {NYC_ROOT}/work/walkable_stations/calibration/check_card.py"
+  ],
+  "output_note": "Your structured output (the JSON schema) carries the brief's turn output block: card = CARD, summary = the 3 SUMMARY lines joined with newlines, conf_counts = FACTS_CONF, hints_conf = HINTS_CONF, open_questions, minutes = MINUTES, helpers = HELPERS, check = CHECK. The graph's helper mechanism is the Agent tool: start each helper as a subagent with its brief from brief_helpers.md filled in. Helpers cannot write anything. Nobody has a shell except your two allowed commands (date, and check_card.py through ROOT's venv python), so a helper reads CSV and JSON with Read and Grep, not python -c. Photos: a web fetch can return an image for viewing; open it with Read to look at it. There is no browser here, so no Street View screenshots: say so in NOT_FOUND where it matters. Write and edit the card files YOURSELF: helper subagents cannot write anything (their writes are denied, even to your card), so never ask a helper to save the card."
+ },
+ "helpers": [],
+ "check": [
+  "{NYC_ROOT}/.venv/bin/python",
+  "-I",
+  "{NYC_ROOT}/work/walkable_stations/calibration/check_card.py",
+  "{card}"
+ ],
+ "call_budget_usd": 10,
+ "workers": 6
+}
