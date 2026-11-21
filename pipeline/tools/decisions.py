@@ -13,7 +13,8 @@ No decision travels as a message, so two sessions can't act on different copies 
                                                 (default 120), or as a reminder every --remind seconds (default 900)
                                                 while items stay open. Restart it after working the queue.
 
-Owners (POLICY.md): lead · page-coordinator · macmini · terrain-study · page-editor · drive-test · pipeline.
+Owners (POLICY.md): lead · page-coordinator · macmini · terrain-study · page-editor · drive-test · pipeline ·
+stations-coordinator.
 Kinds:
   approval  the lead gate. approve -> the supervisor writes the run's approval.json; reject -> the run is retired.
   verdict   a round stopped at a gate. Its stream's owner answers: fix (a new round; this run is retired),

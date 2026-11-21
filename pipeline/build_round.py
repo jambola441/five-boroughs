@@ -39,6 +39,8 @@ def main():
         return write_plan(out, cfg, highway_tasks(cfg))
     if cfg.get("kind") == "page_round":
         return write_plan(out, cfg, page_tasks(cfg))
+    if cfg.get("kind") == "research_swarm":
+        return write_plan(out, cfg, swarm_tasks(cfg))
     if cfg.get("kind") == "terrain_round_live":
         return write_plan(out, cfg, terrain_live_tasks(list(cfg.get("frame_pairs") or {})))
 
@@ -195,6 +197,30 @@ def page_tasks(cfg):
     return t
 
 
+def swarm_tasks(cfg):
+    """research_swarm (adapters/swarm.py): A lanes x B items x C helpers. Per item: 'before' helpers (no deps: they
+    start at once), the main agent after them and after the previous item's main in its lane (so a lane is sequential
+    and carries its last summary), the check gate, and 'after' helpers. swarm_report after every main and helper
+    (it reads the checks from the run state, so one failed check doesn't hide the measurements)."""
+    H = ["findings", "contradictions", "minutes_wall", "cost_usd", "file"]
+    M = ["card", "summary", "conf_counts", "open_questions", "minutes_wall", "cost_usd", "minutes_reported", "denied_tool_calls"]
+    t, last = [], []
+    for lane in cfg["lanes"]:
+        prev = None
+        for it in map(str, lane):
+            bef = [f"{it}__{h['id']}" for h in cfg.get("helpers", []) if h.get("when", "before") == "before"]
+            aft = [f"{it}__{h['id']}" for h in cfg.get("helpers", []) if h.get("when") == "after"]
+            t += [node(b, "swarm", H, prompt=f"helper {b}") for b in bef]
+            t.append(node(f"{it}__main", "swarm", M, after=bef + ([f"{prev}__main"] if prev else []), prompt=f"research {it}"))
+            t.append(node(f"{it}__check", "swarm", ["pass", "detail"], after=[f"{it}__main"], validated=True))
+            t += [node(a, "swarm", H, after=[f"{it}__main"], prompt=f"helper {a}") for a in aft]
+            last += bef + [f"{it}__main", f"{it}__check"] + aft
+            prev = it
+    t.append(node("swarm_report", "swarm", ["items", "total_cost_usd", "cost_per_item_usd", "main_minutes_median",
+                                            "checks_passed", "report"], after=[x for x in last if not x.endswith("__check")]))
+    return t
+
+
 FINAL_ACCEPT = ("page_accept", "qa_accept", "highway_accept", "explore_accept")
 
 
@@ -218,7 +244,7 @@ def freeze(cfg, tasks):
 def write_plan(out, cfg, tasks):
     tasks = freeze(cfg, tasks)
     providers = {p: {"command": [PY, "-I", os.path.join(HERE, "adapters", p + ".py")], "env": ENV}
-                 for p in ("terrain", "qa", "lead", "explore", "round_live", "highway", "page", "codepin")}
+                 for p in ("terrain", "qa", "lead", "explore", "round_live", "highway", "page", "codepin", "swarm")}
     plan = {"api_version": "swarm/v1", "name": "round: " + cfg["round"], "max_tasks": len(tasks) + 2,
             "providers": providers, "tasks": tasks}
     json.dump(plan, open(os.path.join(out, "plan.json"), "w"), indent=1)

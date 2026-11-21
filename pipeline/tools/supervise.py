@@ -124,7 +124,8 @@ def report_changes():
     json.dump(new, open(path, "w"), indent=0)
 
 
-STREAM_OWNER = {"page_round": "page-coordinator", "terrain_round_live": "lead", "highway_round": "macmini"}
+STREAM_OWNER = {"page_round": "page-coordinator", "terrain_round_live": "lead", "highway_round": "macmini",
+                "research_swarm": "stations-coordinator"}
 
 
 def sync_queue(run_dir):
