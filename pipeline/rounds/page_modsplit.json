@@ -1,0 +1,359 @@
+{
+ "round": "Page round 4: modelled-chain test split by line (MODSPLIT=1) on B′ + reslocal=1, r6t2 + r14s",
+ "kind": "page_round",
+ "mode": "live",
+ "accept": "explore",
+ "status": "PROPOSED by the page coordinator 2026-11-21; budget set by the lead 2026-11-21; needs the adapter additions in proposal.needs_adapter",
+ "idea": "In the claim stage (candidates() -> chainsNear), a deck line joins a chain only with lines that have the same own 'modelled' flag (>= 60 % of its points within 8 m of a lane). Off = today: one lane-hugging neighbour can make a whole joined chain 'modelled', so lines that are not themselves modelled are excluded before any claim (E 174 St R2 line, osm 5698008, joined to osm 1305318055: 93/114 = 82 % -> excluded). deck_under already uses its own per-line test, so it measures these lines unchanged.",
+ "question": "Does splitting the modelled test by line let the page claim the decks excluded only through a joined lane-hugging neighbour (r6t2 static count: 22 lines / 5,199 m), pay back r6t2's E 174 St deck-gap debt (18 of 28 m under), without new places, deck gap, ramps, tents, or bridge-owned rides?",
+ "pays_back": {
+  "round": "r6t2",
+  "debt": "East 174th Street R2 deck line (5824.8,-8540.7)-(5847.9,-8528.2): page draws 18 of 28 m under it, max gap 2.08 m",
+  "owner": "page: modelled-chain test on joined chains"
+ },
+ "budget": {
+  "new_step_places": 0,
+  "marginal_step_max_m": 0,
+  "deck_under_m": 0,
+  "ramps_new": 0,
+  "tents_n": 0,
+  "tents_m2": 0,
+  "tents_new": 0,
+  "c_ii_m": 0,
+  "visible_drivable_new": 0
+ },
+ "budget_note": "set by the lead 2026-11-21 (all zeros, visible_drivable_new 0; stricter gates accepted). If the round fails only on a few new places, the coordinator brings the lead the list with locations and LiDAR classes, not a budget request. The rs2keep rule (no new places vs base; deck gap, tents, (c)(ii) no rise; ramps 0 new) plus visible_drivable_new no rise. Every newly riding polygon on a continuous LiDAR layer at its drawn height or with a reason (kept_reasons file, from the page editor); sliver spikes fail only off continuous LiDAR; D cap 20 % (the kept_lidar check, unchanged).",
+ "deck_zero_pieces": [
+  {
+   "name": "Cross Bronx Expressway",
+   "x": 8445.6,
+   "z": -7785.4,
+   "radius_m": 15,
+   "why": "the #6 piece, regression: must stay 0 m under"
+  },
+  {
+   "name": "East 174th Street",
+   "x": 5836.4,
+   "z": -8534.5,
+   "radius_m": 15,
+   "why": "the r6t2 debt line (ends 13 m from this point): must show 0 m under (was 18 m)"
+  }
+ ],
+ "debt": [],
+ "target_fixed": [],
+ "steps": [
+  {
+   "id": "p_drape_base",
+   "tool": "drape",
+   "tag": "v1c_r6t2_r14s_lr3_rl1b",
+   "base": "v1c_r6t2_r14s_lr3",
+   "LIFTRULE": 3,
+   "RESLOCAL": 1,
+   "TERV": "v1c_r6t2",
+   "LANES": "highways/work/p2net/final_fdr/r14s"
+  },
+  {
+   "id": "p_drape",
+   "tool": "drape",
+   "tag": "v1c_r6t2_r14s_lr3_rl1ms",
+   "base": "v1c_r6t2_r14s_lr3_rl1b",
+   "after": [
+    "p_drape_base"
+   ],
+   "LIFTRULE": 3,
+   "RESLOCAL": 1,
+   "MODSPLIT": 1,
+   "extra_switches": [
+    "MODSPLIT"
+   ],
+   "TERV": "v1c_r6t2",
+   "LANES": "highways/work/p2net/final_fdr/r14s"
+  },
+  {
+   "id": "p_lift_base",
+   "tool": "lift_gate",
+   "tag": "v1c_r6t2_r14s_lr3_rl1b",
+   "drape": "step:p_drape_base",
+   "after": [
+    "p_drape_base"
+   ],
+   "TERV": "v1c_r6t2",
+   "LANES": "highways/work/p2net/final_fdr/r14s"
+  },
+  {
+   "id": "p_lift_gate",
+   "tool": "lift_gate",
+   "tag": "v1c_r6t2_r14s_lr3_rl1ms",
+   "drape": "step:p_drape",
+   "after": [
+    "p_drape",
+    "p_lift_base"
+   ],
+   "TERV": "v1c_r6t2",
+   "LANES": "highways/work/p2net/final_fdr/r14s"
+  },
+  {
+   "id": "p_newlist",
+   "tool": "newlist",
+   "base_flags": "work/drive_audit/deckends/lift_pd_v1c_r6t2_r14s_lr3_rl1b/city/flags_drape.json",
+   "variant_flags": "step:p_lift_gate",
+   "after": [
+    "p_lift_gate",
+    "p_lift_base"
+   ]
+  },
+  {
+   "id": "p_deck_base",
+   "tool": "deck_under",
+   "drape": "step:p_drape_base",
+   "after": [
+    "p_drape_base"
+   ],
+   "TERV": "v1c_r6t2"
+  },
+  {
+   "id": "p_deck_under",
+   "tool": "deck_under",
+   "drape": "step:p_drape",
+   "after": [
+    "p_drape"
+   ],
+   "TERV": "v1c_r6t2"
+  },
+  {
+   "id": "p_ramps_base",
+   "tool": "ramps",
+   "tag": "v1c_r6t2_r14s_lr3_rl1b",
+   "TERV": "v1c_r6t2",
+   "after": [
+    "p_drape_base"
+   ]
+  },
+  {
+   "id": "p_ramps",
+   "tool": "ramps",
+   "tag": "v1c_r6t2_r14s_lr3_rl1ms",
+   "TERV": "v1c_r6t2",
+   "after": [
+    "p_drape",
+    "p_ramps_base"
+   ]
+  },
+  {
+   "id": "p_modelled_off",
+   "tool": "modelled_census",
+   "terrain": "work/terrain_study/p1/terrain/v1c_r6t2",
+   "LANES": "highways/work/p2net/final_fdr/r14s",
+   "split": false
+  },
+  {
+   "id": "p_modelled_on",
+   "tool": "modelled_census",
+   "terrain": "work/terrain_study/p1/terrain/v1c_r6t2",
+   "LANES": "highways/work/p2net/final_fdr/r14s",
+   "split": true
+  },
+  {
+   "id": "p_census",
+   "tool": "census_fp",
+   "LIFTRULE": 3,
+   "RESLOCAL": 1,
+   "MODSPLIT": 1,
+   "extra_switches": [
+    "MODSPLIT"
+   ],
+   "after": [
+    "p_newlist"
+   ],
+   "TERV": "v1c_r6t2",
+   "LANES": "highways/work/p2net/final_fdr/r14s"
+  },
+  {
+   "id": "p_census_base",
+   "tool": "census_fp",
+   "LIFTRULE": 3,
+   "RESLOCAL": 1,
+   "after": [
+    "p_census"
+   ],
+   "TERV": "v1c_r6t2",
+   "LANES": "highways/work/p2net/final_fdr/r14s"
+  },
+  {
+   "id": "p_fp_new",
+   "tool": "fp_new",
+   "census_off": "p_census_base",
+   "census_on": "p_census",
+   "after": [
+    "p_census",
+    "p_census_base"
+   ]
+  },
+  {
+   "id": "p_new_lidar",
+   "tool": "kept_lidar2",
+   "list": "step:p_fp_new",
+   "drape": "step:p_drape",
+   "base_drape": "work/drive_audit/page_drape/v1c_r6t2_r14s_lr3_rl1b",
+   "terrain": "work/terrain_study/p1/terrain/v1c_r6t2",
+   "after": [
+    "p_fp_new",
+    "p_drape"
+   ]
+  },
+  {
+   "id": "p_lidar",
+   "tool": "lidar",
+   "list": "step:p_newlist",
+   "drape": "step:p_drape",
+   "after": [
+    "p_newlist"
+   ]
+  },
+  {
+   "id": "p_trace",
+   "tool": "trace",
+   "list": "step:p_newlist",
+   "LIFTRULE": 3,
+   "RESLOCAL": 1,
+   "MODSPLIT": 1,
+   "extra_switches": [
+    "MODSPLIT"
+   ],
+   "after": [
+    "p_newlist"
+   ],
+   "TERV": "v1c_r6t2",
+   "LANES": "highways/work/p2net/final_fdr/r14s"
+  },
+  {
+   "id": "p_tent_diff",
+   "tool": "tent_diff",
+   "drape": "step:p_drape",
+   "base_drape": "work/drive_audit/page_drape/v1c_r6t2_r14s_lr3_rl1b",
+   "after": [
+    "p_drape",
+    "p_drape_base"
+   ]
+  }
+ ],
+ "gates": [
+  {
+   "id": "g_modelled",
+   "check": "modelled_split",
+   "step": "p_modelled_on",
+   "base_step": "p_modelled_off",
+   "rule": "pass only if the split run inherits 0 lines (summary.inherited.lines == 0). Reports the lead's required evidence from the off run: deck lines excluded ONLY because joined to a lane-hugging neighbour, citywide, lines and metres (summary.inherited), and inherited_by_r2; plus how many of them actually ride after the switch (p_fp_new rows)",
+   "also": [
+    "p_fp_new"
+   ]
+  },
+  {
+   "id": "g_newlist",
+   "check": "newlist",
+   "step": "p_newlist",
+   "classes": [
+    "step2",
+    "lost"
+   ],
+   "min_m": 0
+  },
+  {
+   "id": "g_deck_under",
+   "check": "deck_under",
+   "step": "p_deck_under",
+   "base_step": "p_deck_base",
+   "rule": "underM must not rise vs base, and every deck_zero_pieces entry must show 0 m under"
+  },
+  {
+   "id": "g_ramps",
+   "check": "ramps",
+   "step": "p_ramps",
+   "base_step": "p_ramps_base"
+  },
+  {
+   "id": "g_census",
+   "check": "census",
+   "step": "p_census",
+   "base_step": "p_census_base",
+   "rule": "bridge census tents must not rise (Brooklyn Bridge risk: its pieces are bridge-owned and deck_under skips them); overflow_polys reported"
+  },
+  {
+   "id": "g_lift",
+   "check": "lift",
+   "step": "p_lift_gate",
+   "base_step": "p_lift_base",
+   "fields": [
+    "c_ii_m",
+    "visible_drivable_new"
+   ]
+  },
+  {
+   "id": "g_new_lidar",
+   "check": "kept_lidar",
+   "step": "p_new_lidar",
+   "rule": "the kept_lidar check unchanged, on the newly riding polygons: FAIL needs a reason, off-LiDAR sliver spikes fail, unlisted slivers fail closed, D cap 20 %"
+  },
+  {
+   "id": "g_tent_diff",
+   "check": "tent_diff",
+   "step": "p_tent_diff"
+  }
+ ],
+ "frames": {
+  "folder": "pe:frames/graph/page_modsplit",
+  "after": [
+   "p_newlist",
+   "p_fp_new"
+  ],
+  "panels": [
+   "B′ + reslocal=1 (r6t2)",
+   "B′ + reslocal=1 + modsplit"
+  ],
+  "variants": [
+   "LIFTRULE=3 RESLOCAL=1",
+   "LIFTRULE=3 RESLOCAL=1 MODSPLIT=1 (?modsplit=1)"
+  ],
+  "poses": [
+   "East 174th Street R2 deck line (5836, -8534): r6t2 debt, should now be claimed",
+   "Belt Pkwy inherited line 1,368 m (tile x-9_z28, ~-3512, 13845)",
+   "Belt Pkwy inherited line 803 m (~-3695, 14077)",
+   "Brooklyn Bridge inherited line 1,054 m (tile x-4_z13, ~-1210, 6923): bridge-owned, check no city polygon starts riding it",
+   "unnamed bridge 217 m, deck gap 16.3 m (~-1733, 6354)",
+   "LIE inherited line 160 m (tile x12_z8, ~6283, 4472)",
+   "Prospect Expy inherited line 158 m (~-972, 11383)",
+   "Cross Bronx #6 piece (8445.6, -7785.4): regression"
+  ],
+  "note": "r6t2 terrain. Midpoints of long lines are approximate; the page editor may move a pose onto the line's newly riding polygons from p_fp_new."
+ },
+ "expires": "2026-11-28",
+ "max_rounds": 3,
+ "success_measure": "deck lines excluded only through a joined lane-hugging neighbour: off run summary.inherited (r6t2 static count 22 lines / 5,199 m) -> 0 in the split run; E 174 St line 0 m under (was 18 m); deck_under underM vs base",
+ "kept_reasons": "pe:data/census/modsplit_kept_reasons.json",
+ "require_sha": {
+  "pe:phaseb/setd_core.mjs": "557ab35519f8faad39df344183a09a02c1390e97fbf12398de17af518ce0b1ab",
+  "pe:phaseb/bridge_own_census.mjs": "f48012a74abc4e9753e5d56a23e6214fc033419d0fcb7d7574bd5cb1fac94fcc",
+  "pe:phaseb/fb_env_preload.mjs": "6f15df029fab667c532b6c5195f07e30c698129201f56afa07020996c06d9730",
+  "pe:phaseb/build.mjs": "bfe7813e34568e8827e7b3ee68ca955eb021cc9d4f420347d2659355362f23b8",
+  "pe:diag/modelled_census.py": "409c17404d01f20a6a38c3070f6ebff936e57587e68f0d3fb8ee4dcafbea8122",
+  "pe:diag/fp_events.mjs": "1f74874bbd24522aad05d7f8b17891a9174c58c8d725dff5484e717edd2ecfbc",
+  "pe:diag/fp_new.py": "33f65e37295ab8e21cee8ed1ec69cdafbfc3e38958ad8a4af75d6b4b8c72f6a8",
+  "pe:diag/lidar_kept_check2.py": "0971329e05882316112857b211818727b5efdfedd241e8b2cef3cb82e39e3f33"
+ },
+ "proposal": {
+  "from": "page coordinator, 2026-11-21, designed with the page editor",
+  "needs_adapter": [
+   "tool modelled_census: python -I pe:diag/modelled_census.py <terrain> <LANES> <out.json> [--split if split]; output summary.{self,inherited,free}.{lines,m}, inherited_by_r2, rows[]",
+   "tool census_fp: census with CLAIMTRACE=1 FP_OUT=<run>/<id>_fp.jsonl and --import ./diag/fp_events.mjs (logs every polygon's final ride); tents/overflow outputs as census",
+   "tool fp_new: python -I pe:diag/fp_new.py <census_off _fp.jsonl> <census_on _fp.jsonl> <run>/<id>.jsonl -> newly riding polygons in kept-claim format; output: rows count",
+   "tool kept_lidar2: DECKS=<terrain>/decks python -I pe:diag/lidar_kept_check2.py <list> <variant drape> <out> <base drape>; same output as kept_lidar, so gate check kept_lidar is reused",
+   "gate check modelled_split (rule in g_modelled)",
+   "deck_under: deck_zero_pieces (a list; each must show 0 m under) in place of the single deck_zero_piece",
+   "pass MODSPLIT through node_env (extra_switches already does)"
+  ],
+  "before_start": [
+   "the page editor swaps the 4 staged files (pe:staged/modsplit/) into pe:phaseb ONLY after page-rs2keep-2 has passed code_verify (it pins the current phaseb files) and after the B″ frames for page-bpp-r2-1 are rendered",
+   "require_sha then pins the swapped files; MODSPLIT off = today's behaviour, RS2KEEP / RS2AREA kept in the files and off here"
+  ]
+ }
+}

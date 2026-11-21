@@ -154,6 +154,10 @@ PAGE_OUT = {"drape": ["out", "tiles_written", "tiles_total"],
             "census": ["out", "tents_n", "tents_m2", "overflow_polys"],
             "kept_lidar": ["out", "kept", "counts"],
             "tent_diff": ["out", "n_new", "m2_new", "tiles_changed"],
+            "modelled_census": ["out", "inherited_lines", "inherited_m", "self_lines", "self_m", "free_lines", "free_m",
+                                "inherited_by_r2"],
+            "census_fp": ["out", "tents_n", "tents_m2", "overflow_polys"],
+            "fp_new": ["out", "rows"], "kept_lidar2": ["out", "kept", "counts"],
             "census_rs": ["out", "tents_n", "tents_m2", "overflow_polys", "rs_whole_losses", "rs_keep_test"]}
 
 
@@ -165,7 +169,7 @@ def page_tasks(cfg):
     t += [node(s["id"], "page", PAGE_OUT[s["tool"]], after=["p_disk"] + s.get("after", []), prompt=s["tool"])
           for s in cfg["steps"]]
     gates = [g["id"] for g in cfg.get("gates", [])]
-    t += [node(g["id"], "page", ["pass", "detail", "items"], after=[g["step"]] + ([g["base_step"]] if g.get("base_step") else []),
+    t += [node(g["id"], "page", ["pass", "detail", "items"], after=[g["step"]] + ([g["base_step"]] if g.get("base_step") else []) + list(g.get("also", [])),
                validated=True) for g in cfg.get("gates", [])]
     fr = []
     if cfg.get("frames"):

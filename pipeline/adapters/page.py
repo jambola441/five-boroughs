@@ -123,6 +123,14 @@ def gate_txt(folder):
     return g, lines
 
 
+def zero_piece_m(j, z):
+    """metres drawn under the deck lines named z (name + a point within radius of one of the line's ends)."""
+    near = [r for r in j["rows"] if r["name"] == z["name"]
+            and min(math.hypot(r["start"][0] - z["x"], r["start"][1] - z["z"]),
+                    math.hypot(r["end"][0] - z["x"], r["end"][1] - z["z"])) <= z.get("radius_m", 15)]
+    return round(sum(r["underM"] for r in near), 1)
+
+
 def t_lift_gate(cfg, s, d):
     """2. the drive test's run_lift_gate.sh --city, unchanged."""
     drape = ref(cfg, d, s["drape"]) if s.get("drape") else project(f"{DA}/page_drape/{s['tag']}")
@@ -162,12 +170,12 @@ def t_deck_under(cfg, s, d):
         project("pe:"), s["id"] + ".log", env=node_env(s)))
     j = json.load(open(p))
     o = {"out": p, **{k: j["total"][k] for k in ("underM", "noneM", "linesUnder")}, "zero_piece_underM": "none"}
-    z = cfg.get("deck_zero_piece")   # the #6 piece: must show 0 m under
-    if z:
-        near = [r for r in j["rows"] if r["name"] == z["name"]
-                and min(math.hypot(r["start"][0] - z["x"], r["start"][1] - z["z"]),
-                        math.hypot(r["end"][0] - z["x"], r["end"][1] - z["z"])) <= z.get("radius_m", 15)]
-        o["zero_piece_underM"] = round(sum(r["underM"] for r in near), 1)
+    zs = cfg.get("deck_zero_pieces") or ([cfg["deck_zero_piece"]] if cfg.get("deck_zero_piece") else [])
+    if zs:   # each named piece must show 0 m under; the step reports their total, the gate lists each
+        tot = 0.0
+        for z in zs:
+            tot += zero_piece_m(j, z)
+        o["zero_piece_underM"] = round(tot, 1)
     return o
 
 
@@ -267,9 +275,57 @@ def t_tent_diff(cfg, s, d):
     return {"out": p, "n_new": t["n_new"], "m2_new": t["m2_new"], "tiles_changed": t.get("tiles_changed", -1)}
 
 
+def t_modelled_census(cfg, s, d):
+    """modelled-chain census (pe:diag/modelled_census.py): deck lines that count as 'modelled' on their own merits
+    ('self'), only through a lane-hugging chain neighbour ('inherited'), or not at all ('free')."""
+    out = os.path.join(OUT, s["id"] + ".json")
+    p = existing_or_run(cfg, s, out, lambda: run_job(
+        s["id"], [py(), "-I", project("pe:diag/modelled_census.py"), project(s["terrain"]), project(s["LANES"]), out]
+        + (["--split"] if s.get("split") else []), project("pe:"), s["id"] + ".log"))
+    j = json.load(open(p))
+    S, R2 = j["summary"], j.get("inherited_by_r2") or {}
+    g = lambda k, f: (S.get(k) or {}).get(f, 0)
+    return {"out": p, "inherited_lines": g("inherited", "lines"), "inherited_m": g("inherited", "m"),
+            "self_lines": g("self", "lines"), "self_m": g("self", "m"), "free_lines": g("free", "lines"),
+            "free_m": g("free", "m"), "inherited_by_r2": json.dumps(R2)}
+
+
+def t_census_fp(cfg, s, d):
+    """census with the page editor's fp_events.mjs preload: every polygon's final ride, logged to <id>_fp.jsonl."""
+    out = os.path.join(OUT, s["id"] + ".json")
+    fp = os.path.join(OUT, s["id"] + "_fp.jsonl")
+    p = existing_or_run(cfg, s, out, lambda: run_job(
+        s["id"], [NODE, "--import", "./diag/fp_events.mjs", "phaseb/bridge_own_census.mjs",
+                  "frames/bridgeown/bridge_foot.json", out], project("pe:"), s["id"] + ".log",
+        env={"ALLTILES": "1", "CLAIMTRACE": "1", "FP_OUT": fp, **node_env(s)}))
+    j = json.load(open(p))
+    return {"out": p, "tents_n": j["tents"]["n"], "tents_m2": j["tents"]["m2"], "overflow_polys": j["overflow"]["polys"]}
+
+
+def t_fp_new(cfg, s, d):
+    """polygons that newly ride a deck with the switch on (pe:diag/fp_new.py), in kept-claim (rk) format."""
+    off, on = (os.path.splitext(d[k]["out"])[0] + "_fp.jsonl" for k in (s["census_off"], s["census_on"]))
+    out = os.path.join(OUT, s["id"] + ".jsonl")
+    p = existing_or_run(cfg, s, out, lambda: run_job(
+        s["id"], [py(), "-I", project("pe:diag/fp_new.py"), off, on, out], project("pe:"), s["id"] + ".log"))
+    return {"out": p, "rows": sum(1 for l in open(p) if l.strip())}
+
+
+def t_kept_lidar2(cfg, s, d):
+    """the kept-claim LiDAR guard (pe:diag/lidar_kept_check2.py, DECKS from the round's terrain) on a step's rk list."""
+    out = os.path.join(OUT, s["id"] + ".json")
+    p = existing_or_run(cfg, s, out, lambda: run_job(
+        s["id"], [py(), "-I", project("pe:diag/lidar_kept_check2.py"), ref(cfg, d, s["list"]), ref(cfg, d, s["drape"]),
+                  out, project(s["base_drape"])], project("pe:"), s["id"] + ".log",
+        env={"DECKS": os.path.join(project(s["terrain"]), "decks")}))
+    j = json.load(open(p))
+    return {"out": p, "kept": len(j["rows"]), "counts": json.dumps(j["counts"])}
+
+
 TOOLS = {"drape": t_drape, "lift_gate": t_lift_gate, "newlist": t_newlist, "deck_under": t_deck_under,
          "ramps": t_ramps, "trace": t_trace, "lidar": t_lidar, "census": t_census,
-         "census_rs": lambda cfg, s, d: t_census(cfg, {**s, "rs_events": True}, d), "kept_lidar": t_kept_lidar, "tent_diff": t_tent_diff}
+         "census_rs": lambda cfg, s, d: t_census(cfg, {**s, "rs_events": True}, d), "kept_lidar": t_kept_lidar, "tent_diff": t_tent_diff,
+         "modelled_census": t_modelled_census, "census_fp": t_census_fp, "fp_new": t_fp_new, "kept_lidar2": t_kept_lidar2}
 
 
 # ---------- gates (computed in code; budgets from the round file, default 0 = must not rise) ----------
@@ -318,6 +374,12 @@ def gate(cfg, g, d):
         lim = base["underM"] + b.get("deck_under_m", 0)
         zp = v.get("zero_piece_underM")
         ok = v["underM"] <= lim and zp in ("none", 0)
+        zs = cfg.get("deck_zero_pieces")
+        if zs:
+            j = json.load(open(v["out"]))
+            each = [(z["name"], zero_piece_m(j, z)) for z in zs]
+            return ok, (f"underM {v['underM']} vs base {base['underM']} (limit {lim}); must show 0 m under: "
+                        + ", ".join(f"{n} {m} m" for n, m in each)), {}
         return ok, f"underM {v['underM']} vs base {base['underM']} (limit {lim}); #6 piece {zp} m under (must be 0)", {}
     if k == "ramps":
         v = d[g["step"]]
@@ -334,6 +396,14 @@ def gate(cfg, g, d):
                 {"unbudgeted": [f"{r['upper']} / {r['lower']} at {r['x']:.0f},{r['z']:.0f}" for r in new][:30]}
         ok = v["flattened"] <= v["previous"] + b.get("ramps_flattened", 0) and v["new"] <= b.get("ramps_new", 0)
         return ok, f"{v['line']} (budget flattened +{b.get('ramps_flattened', 0)}, new {b.get('ramps_new', 0)})", {}
+    if k == "modelled_split":   # the coordinator's rule: with the switch on, no line is modelled only by inheritance
+        on, off = d[g["step"]], d[g["base_step"]]
+        rides = d.get("p_fp_new", {}).get("rows", "?")
+        ok = int(on["inherited_lines"]) == 0
+        return ok, (f"switch on: {on['inherited_lines']} lines / {on['inherited_m']} m inherit 'modelled' (must be 0); "
+                    f"switch off (the lead's required count): {off['inherited_lines']} deck lines / {off['inherited_m']} m "
+                    f"excluded only through a lane-hugging neighbour, of them by R2 lines {off['inherited_by_r2']}; "
+                    f"polygons newly riding with the switch on: {rides}"), {}
     if k == "kept_lidar":   # every kept claim the rule raised: on LiDAR (PASS), or a FAIL with a reason on file
         rows = json.load(open(d[g["step"]]["out"]))["rows"]
         rs = json.load(open(project(cfg["kept_reasons"]))) if cfg.get("kept_reasons") and os.path.exists(project(cfg["kept_reasons"])) else []
