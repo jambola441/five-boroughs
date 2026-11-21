@@ -155,7 +155,7 @@ def main():
         run(cfg, ["$PY", "-I", "work/p2net/unsupported_check.py", RC, p["prev_nocbe"]], "d_unsupported.log")
         j = jload(f"work/p2net/unsupported_check_{r}_nocbe.json")
         u = j[f"new_vs_{cfg['prev']}_nocbe"]
-        dl = [e for e in cfg.get("debt", []) if e.get("check") == "d_unsupported"]   # the lead's debt: an allowance
+        dl = list({e["name"]: e for e in cfg.get("debt", []) if e.get("check") == "d_unsupported"}.values())   # the lead's debt (max, not summed)
         lim = max([10] + [e["unsupported_m_max"] for e in dl])
         ok = u["unsupported"]["m_approx"] <= lim and u["hanging"]["samples"] == 0
         # lead (via macmini, 21 Nov): overpass edges (>= 4.6 m over a drivable deck) don't count; the old definition
@@ -181,7 +181,8 @@ def main():
         run(cfg, ["$PY", "-I", "work/p2net/void_diff.py", f"{cfg['prev']}_nocbe", f"{r}_nocbe"], "d_void_diff.log")
         v = jload(f"work/p2net/void_diff_{cfg['prev']}_nocbe_{r}_nocbe.json")
         reg = v.get("regression_unreasoned_m2", v["regression_real_m2"])   # macmini: unreasoned regression stops
-        dl = [e for e in cfg.get("debt", []) if e.get("check") == "d_void"]   # the lead's debt: an allowance in m2
+        # the lead's debt: an allowance in m2, one per (check, name), so a re-approved debt can't stack
+        dl = list({e["name"]: e for e in cfg.get("debt", []) if e.get("check") == "d_void"}.values())
         allow = sum(e["void_m2_max"] for e in dl)
         return respond(req, output={"pass": str(reg <= allow).lower(),
                                     "detail": f"void regression without a reason {reg} m2 (all {v['regression_real_m2']} m2)"
