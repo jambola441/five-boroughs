@@ -83,7 +83,8 @@ def frames_step(cfg, tid):
         import g0_v2
 
         def g0():   # evaluated only once READY is there, so a half-written file is never counted as a shoot
-            state, why, _ = g0_v2.evaluate(folder, need, cg.get("max_diff_pct", 0.05), os.path.join(OUT, "g0_v2_history.json"))
+            state, why, _ = g0_v2.evaluate(folder, need, cg.get("max_diff_pct", 0.05), os.path.join(OUT, "g0_v2_history.json"),
+                                           require_sun=cg.get("require_sun", True))
             if state == "lead":
                 raise RuntimeError(f"G0 v2: {why} (a lead decision)")
             return state == "pass", (why if state == "pass" else f"G0 v2: {why}")

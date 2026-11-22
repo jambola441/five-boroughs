@@ -12,6 +12,10 @@ v2, per pair, from <frames folder>/guards_frames.json rows:
 3. A pair whose A vs B is >= lim on clean captures is re-shot once; if it fails again on a clean re-shoot, it is a
    lead decision (no further loop). History per pose is kept in history_path across READY drops.
 
+0. The sun (the lead, 2026-11-22: 3 of 6 r14t loads rendered under the live clock): each row must say "sun_set": true,
+   meaning the harness waited for FB_SUN, set the noon sun and asserted it before every one of the pair's shots (A, A',
+   B, B'). A row without it is an invalid shoot: that pair is re-shot (require_sun, on by default in v2).
+
 Switch it on in a round file: frames.capture_guard.version = 2 (wired in highway.frames_step; r14x is the first user).
 """
 import hashlib
@@ -30,7 +34,7 @@ def site_of(pose, sites):
     return hits[0] if len(hits) == 1 else None
 
 
-def evaluate(folder, need=(), lim=0.05, history_path=None):
+def evaluate(folder, need=(), lim=0.05, history_path=None, require_sun=True):
     """Returns (state, report, rows). state: 'pass' | 'reshoot' | 'lead'."""
     f = os.path.join(folder, "guards_frames.json")
     if not os.path.exists(f):
@@ -41,6 +45,11 @@ def evaluate(folder, need=(), lim=0.05, history_path=None):
     missing = [n for n in need if n not in have]
     if missing:
         return "reshoot", f"no G0 row for {len(missing)} of {len(need)} pairs: {', '.join(missing[:6])}", []
+    if require_sun:   # a shot under the live clock is invalid: re-shoot it; it never counts toward the lead's repeat rule
+        nosun = [str(x.get("pose")) for x in pairs if x.get("sun_set") is not True]
+        if nosun:
+            return "reshoot", (f"{len(nosun)} pair(s) without sun_set true (FB_SUN not asserted before every shot): "
+                               f"{', '.join(nosun[:8])}; invalid shoot, re-shoot them"), []
     shot = hashlib.sha256(raw).hexdigest()[:12]   # one READY drop = one shoot
     hist = json.load(open(history_path)) if history_path and os.path.exists(history_path) else {}
     rows, noisy, fail_once, fail_again = [], [], [], []
