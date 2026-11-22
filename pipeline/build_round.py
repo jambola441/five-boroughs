@@ -253,21 +253,22 @@ def swarm_tasks(cfg):
          "hints_conf", "helpers", "self_check", "tokens"]
     if cfg.get("stage") == "plan":
         return plan_tasks(cfg)
+    A = cfg.get("adapter", "swarm")   # swarm_ext: round options (Google imagery, fix_brief) on swarm.py
     t, last = [], []
     for lane in cfg["lanes"]:
         prev = None
         for it in map(str, lane):
             bef =[f"{it}__{h['id']}" for h in cfg.get("helpers", []) if h.get("when", "before") == "before"]
             aft = [f"{it}__{h['id']}" for h in cfg.get("helpers", []) if h.get("when") == "after"]
-            t += [node(b, "swarm", H, prompt=f"helper {b}") for b in bef]
-            t.append(node(f"{it}__main", "swarm", M, after=bef + ([f"{prev}__main"] if prev else []), prompt=f"research {it}"))
-            t += [node(a, "swarm", H, after=[f"{it}__main"], prompt=f"helper {a}") for a in aft]
+            t += [node(b, A, H, prompt=f"helper {b}") for b in bef]
+            t.append(node(f"{it}__main", A, M, after=bef + ([f"{prev}__main"] if prev else []), prompt=f"research {it}"))
+            t += [node(a, A, H, after=[f"{it}__main"], prompt=f"helper {a}") for a in aft]
             fix = [f"{it}__fix"] if cfg.get("fix") else []   # gate output + contradictions back to the main, once
-            t += [node(x, "swarm", F, after=[f"{it}__main"] + aft, prompt=f"fix {it}") for x in fix]
-            t.append(node(f"{it}__check", "swarm", ["pass", "detail"], after=fix or [f"{it}__main"], validated=True))
+            t += [node(x, A, F, after=[f"{it}__main"] + aft, prompt=f"fix {it}") for x in fix]
+            t.append(node(f"{it}__check", A, ["pass", "detail"], after=fix or [f"{it}__main"], validated=True))
             last += bef + [f"{it}__main", f"{it}__check"] + aft + fix
             prev = it
-    t.append(node("swarm_report", "swarm", ["items", "total_cost_usd", "cost_per_item_usd", "main_minutes_median",
+    t.append(node("swarm_report", A, ["items", "total_cost_usd", "cost_per_item_usd", "main_minutes_median",
                                             "checks_passed", "report"], after=[x for x in last if not x.endswith("__check")]))
     return t
 
@@ -315,7 +316,7 @@ def freeze(cfg, tasks):
 def write_plan(out, cfg, tasks):
     tasks = freeze(cfg, tasks)
     providers = {p: {"command": [PY, "-I", os.path.join(HERE, "adapters", p + ".py")], "env": ENV}
-                 for p in ("terrain", "qa", "lead", "explore", "round_live", "highway", "page", "codepin", "swarm", "swarm_plan", "laneguard", "combined")}
+                 for p in ("terrain", "qa", "lead", "explore", "round_live", "highway", "page", "codepin", "swarm", "swarm_ext", "swarm_plan", "laneguard", "combined")}
     plan = {"api_version": "swarm/v1", "name": "round: " + cfg["round"], "max_tasks": len(tasks) + 2,
             "providers": providers, "tasks": tasks}
     json.dump(plan, open(os.path.join(out, "plan.json"), "w"), indent=1)
