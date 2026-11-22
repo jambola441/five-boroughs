@@ -50,7 +50,7 @@
   "output_note": "ENGINE NOTES (this run is agy). Your working folder holds copies of plan_cx_{COMPLEX_ID}.json (empty at first) and your card files: edit them there; the graph copies them back. You cannot run check_plan.py: the script runs after you, then a repair pass gives you its findings. Use curl in your sandboxed terminal to fetch the card's cited pages and photos into your working folder and open them to recount; they are deleted after the turn. Never fetch Google Maps, Street View or Google-hosted photos. Your structured output carries the brief's turn output block."
  },
  "helpers": [],
- "fix_brief": "brief_plan.md#Rules+Turn output+Repair pass",
+ "fix_brief": "brief_plan.md#Plan brief+Rules+Read first+Turn output+Repair pass",
  "check": [
   "{NYC_ROOT}/.venv/bin/python",
   "-I",
