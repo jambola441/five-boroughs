@@ -42,7 +42,7 @@ def main():
     if cfg.get("kind") == "research_swarm":
         return write_plan(out, cfg, swarm_tasks(cfg))
     if cfg.get("kind") == "terrain_round_live":
-        return write_plan(out, cfg, terrain_live_tasks(list(cfg.get("frame_pairs") or {})))
+        return write_plan(out, cfg, terrain_live_tasks(list(cfg.get("frame_pairs") or {}), cfg))
 
     pairs = list(cfg["frame_pairs"])
     hyd = [f"hydrogen_{p}" for p in pairs]
@@ -89,11 +89,25 @@ def explore_tasks():
 GATES = ["pins", "a", "b", "c", "ramps", "city", "walls", "flight"]  # the lead's mandatory gates (21 Nov)
 
 
-def terrain_live_tasks(pairs):
+def lane_guard_tasks(cfg):
+    """Register row 27 (the lead): terrain above a highway lane. adapters/laneguard.py; stops feed qa_accept."""
+    if not cfg or not cfg.get("lane_guard"):
+        return [], []
+    t = [node("lg_manifest", "laneguard", ["pass", "detail"], after=["t_freeze"], validated=True),
+         node("lg_over_this", "laneguard", ["out", "triangles", "by_depth"], after=["lg_manifest"]),
+         node("lg_over_prev", "laneguard", ["out", "triangles", "by_depth"], after=["lg_manifest"]),
+         node("lg_edges", "laneguard", ["out", "new_edge_gaps"], after=["lg_manifest"]),
+         node("lg_gate_over", "laneguard", ["pass", "detail", "items"], after=["lg_over_this", "lg_over_prev"], validated=True),
+         node("lg_gate_edges", "laneguard", ["pass", "detail", "items"], after=["lg_edges"], validated=True)]
+    return t, ["lg_manifest", "lg_gate_over", "lg_gate_edges"]
+
+
+def terrain_live_tasks(pairs, cfg=None):
     """Live terrain round: terrain study build -> checks -> accept -> freeze, then drive-test QA where every gate
     is its own mandatory step; the QA accept and lead gate can't be reached while any gate is failed or waiting."""
     hyd = [f"hydrogen_{p}" for p in pairs]
     gates = [f"gate_{g}" for g in GATES]
+    lgt, lgs = lane_guard_tasks(cfg)
     t = [
         node("t_build", "round_live", ["built", "frozen"], validated=True),
         node("t_checks", "round_live", ["free_ends", "crest_8pct", "crest_12pct", "crest_widened_8",
@@ -108,11 +122,11 @@ def terrain_live_tasks(pairs):
     ] + [node(g, "round_live", ["pass", "detail"], after=["qa_round_gate"], validated=True) for g in gates] + [
         node("frames_ready", "round_live", ["pairs"], after=["t_freeze"]),
     ] + [node(h, "qa", ["verdict", "fixed", "new_in_after", "seconds"], after=["frames_ready"], validated=True)
-         for h in hyd] + [
+         for h in hyd] + lgt + [
         # BUNDLE (shippable vs live) is reported on every round and never blocks the round itself.
         node("bundle", "round_live", ["shippable", "blocking", "line"], after=["qa_round_gate"]),
         node("qa_accept", "round_live", ["rules_pass", "decision", "reasons", "bundle"],
-             after=gates + hyd + ["frames_ready", "bundle"], validated=True),
+             after=gates + hyd + ["frames_ready", "bundle"] + lgs, validated=True),
         node("lead_gate", "lead", ["approved_by", "decision", "class_rows", "bundle"], after=["qa_accept"]),
         node("register_update", "lead", ["row"], after=["lead_gate"]),
     ]
@@ -253,7 +267,7 @@ def freeze(cfg, tasks):
 def write_plan(out, cfg, tasks):
     tasks = freeze(cfg, tasks)
     providers = {p: {"command": [PY, "-I", os.path.join(HERE, "adapters", p + ".py")], "env": ENV}
-                 for p in ("terrain", "qa", "lead", "explore", "round_live", "highway", "page", "codepin", "swarm")}
+                 for p in ("terrain", "qa", "lead", "explore", "round_live", "highway", "page", "codepin", "swarm", "laneguard")}
     plan = {"api_version": "swarm/v1", "name": "round: " + cfg["round"], "max_tasks": len(tasks) + 2,
             "providers": providers, "tasks": tasks}
     json.dump(plan, open(os.path.join(out, "plan.json"), "w"), indent=1)

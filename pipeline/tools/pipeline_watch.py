@@ -17,7 +17,7 @@ import time
 RUNS = os.environ["PIPELINE_RUNS"]
 SEEN = os.path.join(RUNS, "_supervisor", "pipeline_seen.json")
 WAIT = ("job running", "awaiting", "GB free", "deadline", "needs ")
-GATES = ("g_", "gate_", "d_", "code_verify", "lead_gate", "register_update", "frames_ready")
+GATES = ("g_", "gate_", "d_", "lg_gate", "lg_manifest", "code_verify", "lead_gate", "register_update", "frames_ready")
 
 
 def findings():
