@@ -31,6 +31,12 @@ def main():
     cfg_path, out = sys.argv[1], os.path.abspath(sys.argv[2])
     cfg = json.load(open(cfg_path))
     os.makedirs(out, exist_ok=False)  # a new folder per run, never reused
+    if cfg.get("kind") in ("page_round", "terrain_round_live", "highway_round") and not cfg.get("code_roots"):
+        # the lead (2026-11-22): the round's own adapters / providers are pinned too, not only the project's scripts;
+        # written into this run's round.json at build, so runs built earlier keep their own roots
+        sys.path.insert(0, os.path.join(HERE, "adapters"))
+        from codepin import ROOTS
+        cfg["code_roots"] = ROOTS[cfg["kind"]] + [os.path.join(HERE, "adapters")]
     json.dump(cfg, open(os.path.join(out, "round.json"), "w"), indent=1)
 
     if cfg.get("kind") == "page_rule_explore":
