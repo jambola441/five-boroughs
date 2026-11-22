@@ -147,7 +147,8 @@
   "capture_guard": {
    "name": "G0 (page editor)",
    "rule": "diff A and B frames on scene parts the variant did not change; > 0.05 % of pixels differing there -> re-shoot both before Hydrogen sees them",
-   "mask": "tiles and screen regions with no file changed between r14t and r14w (sha256), plus sky"
+   "mask": "tiles and screen regions with no file changed between r14t and r14w (sha256), plus sky",
+   "version": 2
   }
  },
  "observations": [
@@ -172,14 +173,18 @@
   "debt": "none pre-agreed (lead 2026-11-21)"
  },
  "lead_approval": {
-  "status": "pending: the lead approves r14x to the engineer after seeing P2_R14U is off",
+  "status": "approved",
   "r14w_terms_carried": [
    "start only once the pinned code has the d_lane_void stop and the frames nodes, or run lane_void_check and the 13 frame pairs outside the graph and attach both before the lead gate; never gate without them",
    "gate summary reports walls on v3c AND v3 (work/p2net/wall_near_lane_v3a.py: live 1916.6 m, r14t 3430.9 m)",
    "G0 passes on all 13 pairs before Hydrogen; any pair Hydrogen calls worse goes to the lead as a decision",
    "the 125 kept-uncut triangles (359 m) are counted, not waived: register row 24 (overlapping decks), next deck-fix target, not r14w debt",
    "no debt pre-agreed; bundle stays NOT shippable until the page claim fix lands; nothing goes live without the owner's OK"
-  ]
+  ],
+  "by": "lead",
+  "date": "2026-11-22",
+  "g0": "v2 (lead: under v1 the shadows of removed walls fail drive pairs for good)",
+  "note": "the 7 cells that stopped r14w-1 (x-3_z15, x14_z6, x1_z5) are not reasoned; if any come back the round stops"
  },
  "walls_report_also": "work/p2net/wall_near_lane_v3a.py",
  "workers": 4,
