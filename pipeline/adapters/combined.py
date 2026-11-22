@@ -121,7 +121,15 @@ def evaluate(ab, ls, reasons):
          "under_deck_m2": ls.get("under_deck_m2"), "drive_backed": ab.get("drive_backed"),   # reported, not gated (the lead)
          "full_rows": bool(ab.get("full")) and bool(ls.get("full"))}
     ok = not incomplete and not any(un.values())
-    return ok, s, {**{k: list(v.values()) for k, v in rows.items()}, "reasons_for_cells_not_in_output": unknown}
+    # under-deck ground (B cut down below a deck): not gated; the lead judges it with frames, so it goes to the lead-gate summary
+    ud = [{k: c.get(k) for k in ("tile", "x", "z", "m2", "a", "b", "deck_y_min", "deck_over_b_min", "deck_mat")}
+          for c in ls.get("under_deck_clusters") or []]
+    s["under_deck_clusters"] = len(ud)
+    if int(ls.get("under_deck_m2") or 0) and sum(int(c["m2"] or 0) for c in ud) < int(ls["under_deck_m2"]):
+        s["incomplete"].append(f"under-deck clusters list {sum(int(c['m2'] or 0) for c in ud)} of {ls['under_deck_m2']} m2")
+        ok = False
+    return ok, s, {**{k: list(v.values()) for k, v in rows.items()}, "under_deck_clusters": ud,
+                   "reasons_for_cells_not_in_output": unknown}
 
 
 def main():
@@ -175,6 +183,9 @@ def main():
                f"new aerial void cells {s['air_cells']} (unreasoned {s['unreasoned_air_cells']}), lost surface {s['lost_m2']} m2 "
                f"(unreasoned {s['unreasoned_lost_m2']} m2); all must be 0 unreasoned"
                + (f"; INCOMPLETE, can't pass: {'; '.join(s['incomplete'])}" if s["incomplete"] else "")
+               + (f"; under deck (not gated, for the lead with frames): {s['under_deck_m2']} m2 in {s['under_deck_clusters']} clusters: "
+                  + ", ".join(f"{c['tile']} {c['m2']} m2 deck {c['deck_over_b_min']} m over B" for c in rows["under_deck_clusters"][:8])
+                  if s["under_deck_clusters"] else "; under deck 0 m2")
                + f"; rows and keys in {rep}" + (f"; reasons {g['reasons']}" if rf and os.path.exists(rf) else "; no reasons file yet"))
         items = ([f"drive {x['key']} ({'/'.join(x.get('classes', []))}, {x.get('rays', '?')} rays)" for x in rows["drive"] if not x["reason"]][:15]
                  + [f"air {x['key']} ({x.get('rays', '?')} rays)" for x in rows["air"] if not x["reason"]][:10]
