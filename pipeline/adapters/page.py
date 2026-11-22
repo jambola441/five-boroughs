@@ -715,15 +715,24 @@ PAGE_ASK = ("These are frames from a 3D city driving game, all from the same cam
             "\"verdict\": \"better|same|worse|mixed\"}}\n```")
 
 
-def hydrogen_frames(cfg):
+ROWS_MAX = 6000   # the step output's "rows" stays valid JSON: past this, a short form; the full rows are in the file
+
+
+def hydrogen_frames(cfg, expect=None):
     """One Hydrogen review per site. A site is one side-by-side image, or several files named <site>__<n>.<ext>
-    (n = panel order), which are reviewed together."""
+    (n = panel order), which are reviewed together. expect: the request's site names; a folder whose sites differ
+    is refused before any review (the lead, 2026-11-22)."""
     from qa import hydrogen_review
     folder = frames_folder(cfg)
     names = cfg["frames"].get("panels") or ["before", "after"]
     sites = {}
     for n in sorted(x for x in os.listdir(folder) if x.lower().endswith(IMG)):
         sites.setdefault(os.path.splitext(n)[0].split("__")[0], []).append(n)
+    if expect is not None and set(sites) != set(expect):
+        extra, missing = sorted(set(sites) - set(expect)), sorted(set(expect) - set(sites))
+        raise RuntimeError("frames folder sites don't match the request's poses: "
+                           + (f"not requested {extra[:8]}" if extra else "") + ("; " if extra and missing else "")
+                           + (f"missing {missing[:8]}" if missing else "") + " (fix the folder, then re-drop READY)")
     import time
     from common import Running
     t0, rows, waiting = time.time(), [], 0
@@ -773,7 +782,17 @@ def hydrogen_frames(cfg):
     by = {}
     for r in rows:
         by[r["verdict"] or "none"] = by.get(r["verdict"] or "none", 0) + 1
-    return {"frames": len(rows), "verdicts": json.dumps(by), "rows": json.dumps(rows)[:6000]}
+    return {"frames": len(rows), "verdicts": json.dumps(by), "rows": rows_field(rows), "rows_file": "hydrogen_frames.json"}
+
+
+def rows_field(rows):
+    """Valid JSON always (r14x2-1: a cut [:6000] broke every reader): the full rows when short, else site + verdict."""
+    full = json.dumps(rows)
+    if len(full) <= ROWS_MAX:
+        return full
+    short = [{"site": r.get("site"), "verdict": r.get("verdict"), **({"override": r["override"]} if r.get("override") else {})}
+             for r in rows]
+    return json.dumps(short)
 
 
 # ---------- accept ----------

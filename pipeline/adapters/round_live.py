@@ -366,10 +366,18 @@ def main():
         # the BUNDLE line never decides the round: it is reported beside it
         rules_pass = all(v.get("pass", "true") == "true" for v in gates.values())
         role = tid.replace("_accept", "")
+        # the lead's frame overrides (frames_guard.apply_overrides, sha-matched) are the lead's own verdicts: listed first
+        lo = [o for v in d.values() if isinstance(v, dict) for o in json.loads(v.get("lead_overrides") or "[]")]
+        oe = [e for v in d.values() if isinstance(v, dict) for e in json.loads(v.get("override_errors") or "[]")]
         prompt = (open(os.path.join(os.path.dirname(__file__), "..", "prompts", f"{role}_accept_live.md")).read()
                   + f"\n\nRound: {cfg['round']} (previous {cfg['prev']})"
                   + f"\n\nPlanned changes vs the previous round: {json.dumps(cfg.get('planned_diff', {}))}"
                   + f"\n\nGate verdicts, computed in code: {'ALL PASS' if rules_pass else 'AT LEAST ONE FAIL'}"
+                  + ("\n\nLead overrides (the lead's own verdicts on these exact frames, matched by sha256 in code; final, "
+                     "do not re-judge these poses; Hydrogen's original words are kept under 'hydrogen' for the record): "
+                     + json.dumps(lo) if lo else "")
+                  + ("\n\nOverride errors (overrides that did NOT apply; Hydrogen's verdict stands at these poses): "
+                     + json.dumps(oe) if oe else "")
                   + "\n\nEvidence:\n" + json.dumps(d, indent=1)[:16000])
         schema = {"type": "object", "properties": {"decision": {"type": "string", "enum": ["accept", "reject"]},
                                                      "reasons": {"type": "array", "items": {"type": "string"}}},

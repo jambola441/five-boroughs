@@ -79,7 +79,18 @@ def frames_step(cfg, tid):
     folder = P.frames_folder(c)
     need = [s["name"] for s in c["frames"].get("sites", [])]   # the lead (r14w): G0 on ALL the round's pairs
     cg = c["frames"].get("capture_guard", {})
-    if cg.get("version") == 2:   # the lead's G0 v2 (adapters/g0_v2.py): capture noise first, a repeat clean failure goes to the lead
+    import frames_guard as FG
+    if cg.get("version") == 3:   # the lead's G0 v3 (adapters/g0_v3.py): v2 plus mask coverage and granted lead rules
+        import g0_v3
+
+        def g0():
+            state, why, _ = g0_v3.evaluate(folder, need, cg.get("max_diff_pct", 0.05), os.path.join(OUT, "g0_v3_history.json"),
+                                           require_sun=cg.get("require_sun", True),
+                                           max_cov=cg.get("max_mask_coverage_pct", 25.0), lead_rules=cg.get("lead_rules", []))
+            if state == "lead":
+                raise RuntimeError(f"G0 v3: {why} (a lead decision)")
+            return state == "pass", (why if state == "pass" else f"G0 v3: {why}")
+    elif cg.get("version") == 2:   # the lead's G0 v2 (adapters/g0_v2.py): capture noise first, a repeat clean failure goes to the lead
         import g0_v2
 
         def g0():   # evaluated only once READY is there, so a half-written file is never counted as a shoot
@@ -95,19 +106,36 @@ def frames_step(cfg, tid):
             out = P.frames_ready(c)
         except P.Waiting as e:
             raise Running(str(e).replace("from the page editor", "from macmini"))
+        ok, why = FG.served(folder)   # write-once frames (the lead, 2026-11-22): SERVED.json shas and mtimes first
+        if not ok:
+            raise Running(f"awaiting frames from macmini: {why}; then drop READY again")
         ok, why = g0()
         if not ok:
             raise Running(f"awaiting frames from macmini: G0 capture guard failed ({why}); re-shoot both, then drop READY again")
         return {**out, "request": out["request"]}
+    ok, sv = FG.served(folder)   # checked again: nothing may change between frames_ready and the review
+    if not ok:
+        raise RuntimeError(f"frames changed after frames_ready: {sv} (macmini re-shoots)")
     ok, why = g0()
     if not ok:
         raise RuntimeError(f"G0 capture guard failed: {why}")
-    out = P.hydrogen_frames(c)
-    worse = [r for r in json.loads(out.get("rows") or "[]") if r.get("verdict") == "worse"]
-    if worse:   # the lead (r14w): a pair Hydrogen calls worse is a lead decision; it never passes on numbers
+    out = P.hydrogen_frames(c, expect=need)   # refuses a folder whose sites aren't the request's poses
+    rows = json.load(open(os.path.join(OUT, out.get("rows_file", "hydrogen_frames.json"))))   # the full rows, never the cut field
+    rows, applied, errors = FG.apply_overrides(rows, folder, cfg.get("frame_overrides"))
+    if cfg.get("frame_overrides") is not None:
+        out = {**out, "rows": P.rows_field(rows), "lead_overrides": json.dumps(applied), "override_errors": json.dumps(errors)}
+        by = {}
+        for r in rows:
+            by[r["verdict"] or "none"] = by.get(r["verdict"] or "none", 0) + 1
+        out["hydrogen_verdicts"], out["verdicts"] = out["verdicts"], json.dumps(by)
+        json.dump({"rows": rows, "lead_overrides": applied, "override_errors": errors},
+                  open(os.path.join(OUT, "hydrogen_frames_overridden.json"), "w"), indent=1)
+    worse = [r for r in rows if r.get("verdict") == "worse"]
+    if worse:   # the lead (r14w): a pair Hydrogen calls worse is a lead decision; only a matching lead override passes it
         raise RuntimeError(f"Hydrogen judged {len(worse)} pair(s) worse: " + "; ".join(
-            f"{r['site']}: {'; '.join(r.get('new', []))[:160]}" for r in worse)[:900] + " (a lead decision)")
-    return {**out, "capture_guard": why}
+            f"{r['site']}: {'; '.join(r.get('new', []))[:160]}" for r in worse)[:900] + " (a lead decision)"
+            + (f"; override errors: {'; '.join(errors)[:300]}" if errors else ""))
+    return {**out, "capture_guard": why, "served": sv}
 
 
 def _g0(folder, lim, need=()):
