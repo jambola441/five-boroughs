@@ -4,3 +4,4 @@ __pycache__/
 config/local.json
 .irrigator/
 .claude/
+pipeline/tools/agyq/

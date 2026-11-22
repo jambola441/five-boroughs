@@ -15,6 +15,7 @@ _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))  # -I drops th
 import json
 
 import agy_cleanup
+import agy_slots
 import prestep
 import swarm as S
 from common import load_request, round_config, run_main
@@ -24,6 +25,7 @@ def main():
     req = load_request()
     cfg = round_config()
     agy_cleanup.wrap(S)   # each agy call's own ~/.gemini brain folder goes after its step (owner's OK, 2026-11-22)
+    agy_slots.wrap(S, cfg)   # agy calls start only in a free heavy-job slot (owner's OK, 2026-11-22)
     if cfg.get("allow_google_imagery"):
         S.DENY_HOSTS[:] = []   # agy_settings reads it per call
     part = req["task"]["id"].partition("__")[2]
