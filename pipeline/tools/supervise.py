@@ -255,6 +255,8 @@ def tick():
         if (name.startswith("_") or not os.path.exists(os.path.join(run_dir, "round.json"))
                 or os.path.exists(os.path.join(run_dir, "RETIRED"))):   # dropped or superseded runs stay put
             continue
+        if os.path.exists(os.path.join(run_dir, "HOLD")):   # held on the lead's word: no retry, no resume until HOLD goes
+            continue
         if not unfinished(run_dir) or busy(run_dir):
             continue
         todo = plan(run_dir)
