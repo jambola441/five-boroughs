@@ -114,7 +114,9 @@ def _g0(folder, lim, need=()):
     if not os.path.exists(f):
         return False, "no guards_frames.json in the frames folder"
     pairs = json.load(open(f)).get("pairs", [])
-    missing = [n for n in need if not any(n in str(x.get("pose", "")) for x in pairs)]
+    from g0_v2 import site_of
+    have = {site_of(x.get("pose"), list(need)) for x in pairs} if need else set()
+    missing = [n for n in need if n not in have]
     if missing:
         return False, f"no G0 row for {len(missing)} of {len(need)} pairs: {', '.join(missing[:6])}"
     v = lambda x: x.get("g0_pixel_diff_pct", x.get("capture_diff_pct"))

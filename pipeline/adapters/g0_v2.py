@@ -12,11 +12,21 @@ v2, per pair, from <frames folder>/guards_frames.json rows:
 3. A pair whose A vs B is >= lim on clean captures is re-shot once; if it fails again on a clean re-shoot, it is a
    lead decision (no further loop). History per pose is kept in history_path across READY drops.
 
-Switch it on in a round file: frames.capture_guard.version = 2 (hookup in highway.py lands after r14w-1).
+Switch it on in a round file: frames.capture_guard.version = 2 (wired in highway.frames_step; r14x is the first user).
 """
 import hashlib
 import json
 import os
+
+
+def site_of(pose, sites):
+    """The one site a G0 row belongs to: its exact name, else the LONGEST site name the pose contains (so
+    'void_x-3_z15_drive' is never counted for 'void_x-3_z15')."""
+    pose = str(pose or "")
+    if pose in sites:
+        return pose
+    hits = [s for s in sites if s in pose]
+    return max(hits, key=len) if hits else None
 
 
 def evaluate(folder, need=(), lim=0.05, history_path=None):
@@ -26,7 +36,8 @@ def evaluate(folder, need=(), lim=0.05, history_path=None):
         return "reshoot", "no guards_frames.json in the frames folder", []
     raw = open(f, "rb").read()
     pairs = json.loads(raw).get("pairs", [])
-    missing = [n for n in need if not any(n in str(x.get("pose", "")) for x in pairs)]
+    have = {site_of(x.get("pose"), list(need)) for x in pairs} if need else set()
+    missing = [n for n in need if n not in have]
     if missing:
         return "reshoot", f"no G0 row for {len(missing)} of {len(need)} pairs: {', '.join(missing[:6])}", []
     shot = hashlib.sha256(raw).hexdigest()[:12]   # one READY drop = one shoot
