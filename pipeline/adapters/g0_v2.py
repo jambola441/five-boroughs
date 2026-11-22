@@ -34,7 +34,10 @@ def site_of(pose, sites):
     return hits[0] if len(hits) == 1 else None
 
 
-def evaluate(folder, need=(), lim=0.05, history_path=None, require_sun=True):
+CAPTURE_CAP = 3   # the lead (2026-11-22): at most 3 invalid captures (noise or no sun) per pose, then a lead decision
+
+
+def evaluate(folder, need=(), lim=0.05, history_path=None, require_sun=True, cap=CAPTURE_CAP):
     """Returns (state, report, rows). state: 'pass' | 'reshoot' | 'lead'."""
     f = os.path.join(folder, "guards_frames.json")
     if not os.path.exists(f):
@@ -45,20 +48,29 @@ def evaluate(folder, need=(), lim=0.05, history_path=None, require_sun=True):
     missing = [n for n in need if n not in have]
     if missing:
         return "reshoot", f"no G0 row for {len(missing)} of {len(need)} pairs: {', '.join(missing[:6])}", []
-    if require_sun:   # a shot under the live clock is invalid: re-shoot it; it never counts toward the lead's repeat rule
-        nosun = [str(x.get("pose")) for x in pairs if x.get("sun_set") is not True]
-        if nosun:
-            return "reshoot", (f"{len(nosun)} pair(s) without sun_set true (FB_SUN not asserted before every shot): "
-                               f"{', '.join(nosun[:8])}; invalid shoot, re-shoot them"), []
     shot = hashlib.sha256(raw).hexdigest()[:12]   # one READY drop = one shoot
     hist = json.load(open(history_path)) if history_path and os.path.exists(history_path) else {}
+    invalid = lambda pose: sum(1 for v in hist.get(str(pose), {}).values() if v.get("invalid"))
+    if require_sun:   # a shot under the live clock is invalid: re-shoot it; it never counts toward the A vs B repeat rule
+        nosun = [str(x.get("pose")) for x in pairs if x.get("sun_set") is not True]
+        if nosun:
+            for p in nosun:
+                hist.setdefault(p, {})[shot] = {"invalid": "no sun"}
+            if history_path:
+                json.dump(hist, open(history_path, "w"), indent=1)
+            over = [p for p in nosun if invalid(p) >= cap]
+            if over:
+                return "lead", (f"{len(over)} pose(s) with {cap} invalid captures (no sun / noise): {', '.join(over[:8])}; "
+                                f"the capture won't settle, the lead decides"), []
+            return "reshoot", (f"{len(nosun)} pair(s) without sun_set true (FB_SUN not asserted before every shot): "
+                               f"{', '.join(nosun[:8])}; invalid shoot, re-shoot them"), []
     rows, noisy, fail_once, fail_again = [], [], [], []
     for x in pairs:
         pose, na, nb, ab = x.get("pose"), x.get("noise_a_pct"), x.get("noise_b_pct"), x.get("g0_pixel_diff_pct")
         clean = na is not None and nb is not None and na < lim and nb < lim
         h = hist.setdefault(str(pose), {})
-        h[shot] = {"clean": clean, "ab": ab}
-        bad_clean = [s for s, v in h.items() if v["clean"] and v["ab"] is not None and v["ab"] >= lim]
+        h[shot] = {"clean": clean, "ab": ab, **({} if clean else {"invalid": "noise"})}
+        bad_clean = [s for s, v in h.items() if v.get("clean") and v.get("ab") is not None and v["ab"] >= lim]
         rows.append({"pose": pose, "noise_a_pct": na, "noise_b_pct": nb, "ab_masked_pct": ab, "clean": clean,
                      "ab_fails_on_clean_shoots": len(bad_clean)})
         if not clean:
@@ -68,6 +80,10 @@ def evaluate(folder, need=(), lim=0.05, history_path=None, require_sun=True):
     if history_path:
         json.dump(hist, open(history_path, "w"), indent=1)
     rep = "; ".join(f"{r['pose']}: noise A {r['noise_a_pct']} B {r['noise_b_pct']}, A vs B {r['ab_masked_pct']} %" for r in rows)
+    capped = [p for p in noisy if invalid(p) >= cap]
+    if capped:
+        return "lead", (f"{len(capped)} pose(s) with {cap} invalid captures (no sun / noise): {', '.join(map(str, capped[:8]))}; "
+                        f"the capture won't settle, the lead decides"), rows
     if noisy or fail_once:
         why = (f"capture noise >= {lim} % at {', '.join(map(str, noisy))}" if noisy else "") + \
               ("; " if noisy and fail_once else "") + \
