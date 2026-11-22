@@ -1,0 +1,190 @@
+{
+ "round": "r14x",
+ "prev": "r14t",
+ "kind": "highway_round",
+ "mode": "live",
+ "note": "r14x = the lead's 'r14w-2' (macmini, 2026-11-21; a new name because rounds are write-once and final_fdr/r14w exists). r14t's chain WITHOUT P2_R14U (the headwall cap was never accepted; it came in with r14u), plus wall_band_clip after part_move in place of drive_band_clear. This is the one change the test copy measured. Same terms, same 13 frames, gate vs r14t.",
+ "p2_terv": "v1c_r6k",
+ "input_build": "work/p2net/b_fdr_r14q",
+ "post_only": true,
+ "frozen_rounds": [
+  "r14i",
+  "r14l",
+  "r14m",
+  "r14n",
+  "r14o",
+  "r14p",
+  "r14q",
+  "r14r",
+  "r14s",
+  "r14t"
+ ],
+ "passes": [
+  "ref_fix",
+  "tjunction_fix",
+  "seam_weld",
+  "tjunction_fix",
+  "paint_attach",
+  "floor_attach",
+  "skirts",
+  "lane_ref",
+  "floor_fix",
+  "floor_split",
+  "ring_fill",
+  "path_keep",
+  "ring_trim_r14t",
+  "light_well",
+  "pit_walls",
+  "cover_walls",
+  "crack_fill",
+  "edge_seal",
+  "underlay_clip",
+  "column_cleanup",
+  "below_to_above"
+ ],
+ "pass_env": {
+  "COVERED": "32959299,910349558,32972050",
+  "LW_TILE": "x4_z0",
+  "P2_R14T": "1",
+  "SKIRT_ALL": "1",
+  "SKIRT_UPTOP": "1",
+  "RING_BAND": "0.25",
+  "WB_KEEP": "work/p2net/wall_band_keep_r14w.json"
+ },
+ "part_move_up": "336534284",
+ "listed_loop": [
+  "wall_check",
+  "node_seam",
+  "node_seam_any",
+  "node_drape",
+  "ring_check",
+  "hole_check",
+  "crack_check",
+  "pit_check",
+  "pitwall_lidar",
+  "floor_vs_lidar",
+  "barrier_check",
+  "column_check",
+  "deck_overlap_check",
+  "seam_tile_check",
+  "paint_check",
+  "wheel_check",
+  "grade_check",
+  "lane_deck_drape"
+ ],
+ "coordinator": "agy:gemini-4-hydrogen-high",
+ "after_part_move": [
+  "wall_band_clip"
+ ],
+ "walls_abs": {
+  "metric": "m",
+  "max_m": 1675.0,
+  "unreasoned_gate": true,
+  "note": "lead: limit 1675.0 m kept, not to be changed here; reported on wall_near_lane v3c: live 1666.7 m / 614 triangles, r14t 2506.6 m (v2 basis was live 1675.0, r14t 3079.2)",
+  "also_report": {
+   "metric": "v3",
+   "script": "work/p2net/wall_near_lane_v3a.py",
+   "live_m": 1916.6,
+   "r14t_m": 3430.9
+  }
+ },
+ "lane_void_check": {
+  "stop": "new_unreasoned > 0",
+  "prev": "r14t",
+  "reasons": "highways/work/p2net/lane_void_reasons.json"
+ },
+ "frames": {
+  "required_before": "lead_gate",
+  "judge": "agy:gemini-4-hydrogen-high",
+  "pairs_vs": "r14t",
+  "sites": [
+   {
+    "name": "edge_46723389_drive",
+    "tile": "x10_z7"
+   },
+   {
+    "name": "edge_995768730_drive",
+    "tile": "x7_z9"
+   },
+   {
+    "name": "void_x-3_z15_drive",
+    "tile": "x-3_z15"
+   },
+   {
+    "name": "edge_1256342939_low",
+    "tile": "x-2_z14",
+    "why": "terrain through decks (observation)"
+   },
+   {
+    "name": "edge_46723389_air"
+   },
+   {
+    "name": "edge_995768730_air"
+   },
+   {
+    "name": "edge_1256342939_air"
+   },
+   {
+    "name": "void_x-3_z15"
+   },
+   {
+    "name": "void_x-3_z16"
+   },
+   {
+    "name": "void_x8_z6"
+   },
+   {
+    "name": "wallsite_onroad_2_958829894"
+   },
+   {
+    "name": "wallsite_onroad_3_68325098"
+   },
+   {
+    "name": "wallsite_onroad_10_25419441"
+   }
+  ],
+  "cameras": "the r14v debt frames' cameras (census/frames/fdr_r14v_debt), same poses",
+  "capture_guard": {
+   "name": "G0 (page editor)",
+   "rule": "diff A and B frames on scene parts the variant did not change; > 0.05 % of pixels differing there -> re-shoot both before Hydrogen sees them",
+   "mask": "tiles and screen regions with no file changed between r14t and r14w (sha256), plus sky"
+  }
+ },
+ "observations": [
+  {
+   "what": "terrain surface above a deck",
+   "where": "x-2_z14 (edge 1256342939 low view)",
+   "class": "candidate (lead), terrain study counts it citywide"
+  },
+  {
+   "what": "street furniture in the lane (lamp posts on lane edges)",
+   "where": "x-3_z15, wall site #10",
+   "class": "candidate (lead)",
+   "owner": "highways (macmini): highways/build.py lamp posts, every 60 m on mainline, every 20 m on the Promenade"
+  }
+ ],
+ "lead_gate_bars": {
+  "walls_on_road_m_max": 1675.0,
+  "walls_report_metric": "wall_near_lane v3 (live 1916.6 m / 655 triangles; r14t 3430.9 m)",
+  "unsupported": "no worse than r14t (new <= 10 m, hanging new 0)",
+  "void": "no worse than r14t (regression unreasoned 0 m2)",
+  "lane_void_check": "0 new vs r14t",
+  "debt": "none pre-agreed (lead 2026-11-21)"
+ },
+ "lead_approval": {
+  "status": "pending: the lead approves r14x to the engineer after seeing P2_R14U is off",
+  "r14w_terms_carried": [
+   "start only once the pinned code has the d_lane_void stop and the frames nodes, or run lane_void_check and the 13 frame pairs outside the graph and attach both before the lead gate; never gate without them",
+   "gate summary reports walls on v3c AND v3 (work/p2net/wall_near_lane_v3a.py: live 1916.6 m, r14t 3430.9 m)",
+   "G0 passes on all 13 pairs before Hydrogen; any pair Hydrogen calls worse goes to the lead as a decision",
+   "the 125 kept-uncut triangles (359 m) are counted, not waived: register row 24 (overlapping decks), next deck-fix target, not r14w debt",
+   "no debt pre-agreed; bundle stays NOT shippable until the page claim fix lands; nothing goes live without the owner's OK"
+  ]
+ },
+ "walls_report_also": "work/p2net/wall_near_lane_v3a.py",
+ "workers": 4,
+ "test_copy": "r14wtest6 was cut from frozen r14t (no P2_R14U), while r14w-1 rebuilt with P2_R14U: the mismatch behind r14w-1's 7 d_lane_void cells. Rule (lead 2026-11-21): a test copy must be built by the same chain and switches as its round. r14x matches r14wtest6's switches.",
+ "r14w_1": "r14w-1 stopped at d_lane_void: 7 one-ray cells (x-3_z15 4 void: an edge_seal ribbon 12.4 -> 7.98 m in r14t lies flat at 12.4 m with the cap; x14_z6 2: walls 3-5 m lower; x1_z5 1: floor -0.54 m). The same geometry is in r14v. Expected to disappear here with the cap off.",
+ "r14v_note": "r14v is not reopened, but at least x-3_z15's 'worse' there likely came from the headwall cap (same ribbon), not from the skirt removal.",
+ "later": "the headwall cap returns in its own round, after the x-3_z15 floor reshaping (16.3 -> 19.1 m2), the x14_z6 walls and the x1_z5 floor are explained; the edge_seal ribbon fix goes there."
+}

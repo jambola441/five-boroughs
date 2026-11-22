@@ -78,7 +78,17 @@ def frames_step(cfg, tid):
     c = frames_cfg(cfg)
     folder = P.frames_folder(c)
     need = [s["name"] for s in c["frames"].get("sites", [])]   # the lead (r14w): G0 on ALL the round's pairs
-    g0 = lambda: _g0(folder, c["frames"].get("capture_guard", {}).get("max_diff_pct", 0.05), need)
+    cg = c["frames"].get("capture_guard", {})
+    if cg.get("version") == 2:   # the lead's G0 v2 (adapters/g0_v2.py): capture noise first, a repeat clean failure goes to the lead
+        import g0_v2
+
+        def g0():   # evaluated only once READY is there, so a half-written file is never counted as a shoot
+            state, why, _ = g0_v2.evaluate(folder, need, cg.get("max_diff_pct", 0.05), os.path.join(OUT, "g0_v2_history.json"))
+            if state == "lead":
+                raise RuntimeError(f"G0 v2: {why} (a lead decision)")
+            return state == "pass", (why if state == "pass" else f"G0 v2: {why}")
+    else:
+        g0 = lambda: _g0(folder, cg.get("max_diff_pct", 0.05), need)
     if tid == "frames_ready":
         try:
             out = P.frames_ready(c)
