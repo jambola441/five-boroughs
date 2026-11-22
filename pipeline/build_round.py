@@ -37,6 +37,8 @@ def main():
         sys.path.insert(0, os.path.join(HERE, "adapters"))
         from codepin import ROOTS
         cfg["code_roots"] = ROOTS[cfg["kind"]] + [os.path.join(HERE, "adapters")]
+    if cfg.get("combined_layer") and cfg.get("code_roots") is not None and "highways/work/census/r6u" not in cfg["code_roots"]:
+        cfg["code_roots"].append("highways/work/census/r6u")   # macmini's combined-layer scripts (outside p2net), pinned too
     json.dump(cfg, open(os.path.join(out, "round.json"), "w"), indent=1)
 
     if cfg.get("kind") == "page_rule_explore":
@@ -108,12 +110,28 @@ def lane_guard_tasks(cfg):
     return t, ["lg_manifest", "lg_gate_over", "lg_gate_edges"]
 
 
+def combined_layer_tasks(cfg):
+    """The lead (2026-11-22): macmini's combined-layer check, this terrain vs the previous frozen one on the pinned highway
+    base. adapters/combined.py; the stop feeds qa_accept. Runs after lg_manifest when the round has a lane guard."""
+    if not cfg or not cfg.get("combined_layer"):
+        return [], []
+    first = ["lg_manifest"] if cfg.get("lane_guard") else ["t_freeze"]
+    t = [node("cl_ab", "combined", ["out", "new_drive_hole_cells", "new_air_void_cells"], after=first),
+         node("cl_lost", "combined", ["out", "lost_m2"], after=first),
+         node("cl_gate", "combined", ["pass", "detail", "items"], after=["cl_ab", "cl_lost"], validated=True)]
+    if cfg["combined_layer"].get("street_carry"):   # report-only (the lead's E 70 St rule): never blocks the accept
+        t.append(node("cl_street", "combined", ["out", "line"], after=first))
+    return t, ["cl_gate"]
+
+
 def terrain_live_tasks(pairs, cfg=None):
     """Live terrain round: terrain study build -> checks -> accept -> freeze, then drive-test QA where every gate
     is its own mandatory step; the QA accept and lead gate can't be reached while any gate is failed or waiting."""
     hyd = [f"hydrogen_{p}" for p in pairs]
     gates = [f"gate_{g}" for g in GATES]
     lgt, lgs = lane_guard_tasks(cfg)
+    clt, cls = combined_layer_tasks(cfg)
+    lgt, lgs = lgt + clt, lgs + cls
     t = [
         node("t_build", "round_live", ["built", "frozen"], validated=True),
         node("t_checks", "round_live", ["free_ends", "crest_8pct", "crest_12pct", "crest_widened_8",
@@ -275,7 +293,7 @@ def freeze(cfg, tasks):
 def write_plan(out, cfg, tasks):
     tasks = freeze(cfg, tasks)
     providers = {p: {"command": [PY, "-I", os.path.join(HERE, "adapters", p + ".py")], "env": ENV}
-                 for p in ("terrain", "qa", "lead", "explore", "round_live", "highway", "page", "codepin", "swarm", "laneguard")}
+                 for p in ("terrain", "qa", "lead", "explore", "round_live", "highway", "page", "codepin", "swarm", "laneguard", "combined")}
     plan = {"api_version": "swarm/v1", "name": "round: " + cfg["round"], "max_tasks": len(tasks) + 2,
             "providers": providers, "tasks": tasks}
     json.dump(plan, open(os.path.join(out, "plan.json"), "w"), indent=1)
