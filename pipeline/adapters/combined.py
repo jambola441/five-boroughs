@@ -118,7 +118,8 @@ def evaluate(ab, ls, reasons):
          "reasons_for_cells_not_in_output": {k: len(v) for k, v in unknown.items()},
          "drive_opened": {c: int(ab.get(f"drive_opened_{c}", 0)) for c in OPENED + ("road",)},
          "cut_to_road_m2": ls.get("cut_to_road_m2"), "carried_m2": ls.get("carried_m2"),
-         "under_deck_m2": ls.get("under_deck_m2"), "full_rows": bool(ab.get("full")) and bool(ls.get("full"))}
+         "under_deck_m2": ls.get("under_deck_m2"), "drive_backed": ab.get("drive_backed"),   # reported, not gated (the lead)
+         "full_rows": bool(ab.get("full")) and bool(ls.get("full"))}
     ok = not incomplete and not any(un.values())
     return ok, s, {**{k: list(v.values()) for k, v in rows.items()}, "reasons_for_cells_not_in_output": unknown}
 
