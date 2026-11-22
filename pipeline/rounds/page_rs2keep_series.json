@@ -1,0 +1,9 @@
+{
+ "series": "page rs2keep (RS2KEEP / RS2AREA: keep rule-2 polygons on the deck)",
+ "status": "RETIRED unspent, 2026-11-22",
+ "by": "page coordinator, lead-approved (no objection)",
+ "why": "its last planned round, rs2keep3, targets the 'rule-2' class, which the page editor's step-seam diagnosis (2026-11-21/22) showed is mislabelled; the claim fix (data-first, with the drive test's at-grade flag) replaces it",
+ "runs": {"page-rs2keep-1": "retired (code changed mid-run)", "page-rs2keep-2": "retired via 'fix' (2026-11-21)", "rs2keep3": "never built or started"},
+ "staged": "pe:staged/rs2keep3 was never pinned or swapped in; it is the page editor's to keep or remove",
+ "note": "Switches stay in the page code, off by default. Any later round on this class starts from a new design."
+}
