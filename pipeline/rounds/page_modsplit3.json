@@ -30,7 +30,7 @@
   "by": "page editor, 2026-11-21, scratch copies, r6t2 + r14s, base rl1b, MODSPLIT=3 (pe:data/census/dry_ms3/PROPOSAL.md)",
   "drape_tiles_written": "2 (x11_z-18 E 174 St, x9_z-17 Washington Br); modsplit2 wrote 9",
   "newlist": "0 new / 1 gone (lost at E 174 St 5841.5,-8534.9)",
-  "deck_under": "underM 8,581 (base 8,648, modsplit2 8,351); E 174 St 0 m; #6 0 m (checked by the coordinator on the dry deck_under rows)",
+  "deck_under": "UNMEASURED on r6t2 (see deck_under_correction); E 174 St 0 m and #6 0 m were read from the same off-terrain run",
   "c_ii_m": "789 (base 800)",
   "guard_1_2_17": "newly riding 5: PASS 4 / FAIL 0 / D 0 / NOLIFT 1, spikes 0, pass_c1_only 0; 17,2 identical",
   "tents": "382 / 547.9 m2 flat; tent_diff 0 new",
@@ -38,7 +38,8 @@
   "car_steps_2m": "2,759 (= base)",
   "modelled": "CORRECTED by the page editor with diag/modelled_census_s3.py --split3 (mirrors the page's MODSPLIT=3 join): frees 1 line / 26 m (East 174th Street, residential). Inherited stays 21 lines / 5,172 m: city 3 / 348 (Centre St 17 m, a Brooklyn Br secondary piece 113 m, an unnamed service bridge 217 m; they reach the modelled part only through motorway / trunk lines, which stay joined), motorway_trunk 14 / 4,572, ext 4 / 253. Plain join: 22 / 5,199 (city 4 / 374). The earlier '4 lines / 374 m freed' came from class tags alone.",
   "lift_guards": "G1 vacate 1 polygon (E 174 St roadbed r52 at 5842.3,-8545.6: the CBE NB entrance ramp from Jerome Ave under the E 174 St deck, lifted with the deck, 19/24 sampled raised vertices have LiDAR at the base height); G2 defect step cells 53, all high-only (46 x11_z-18, 7 x9_z-17), low-only 0; on modsplit2 G1 5 / G2 998, flagging m02 and m06",
-  "expected": "every gate passes except, without the lead's terms, g_modelled (18 lines stay inherited by design), g_vacate (r52) and g_step (53 high-only cells). Those are exactly what lead_terms asks."
+  "expected": "every gate passes except, without the lead's terms, g_modelled (18 lines stay inherited by design), g_vacate (r52) and g_step (53 high-only cells). Those are exactly what lead_terms asks.",
+  "deck_under_correction": "page editor, 2026-11-21: the dry 8,581 m was measured on r6r decks (TERV/LANES not set in the dry run), not r6t2; MODSPLIT=3's deck_under on r6t2 is unmeasured (its scratch drape is deleted). The base 8,648 (page-modsplit-1, r6t2) is correct."
  },
  "budget": {
   "new_step_places": 0,
