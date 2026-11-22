@@ -19,6 +19,7 @@ import os
 import subprocess
 
 import agy_cleanup
+import prestep
 import swarm as S
 from common import OUT, deps, load_request, project, respond, round_config, run_main, validate
 
@@ -85,6 +86,8 @@ def main():
         return validate(req, True)
     d = deps(req)
     item, _, part = tid.partition("__")
+    if part in ("main", "fix"):
+        prestep.wrap(S, cfg, item, part)   # the round's pre-step, if any, prepares this step's working folder
 
     if tid == "swarm_report":
         rows = []
@@ -125,6 +128,7 @@ def main():
             rc, out = run(cfg, item, cmd)
             ok = ok and rc == 0
             lines.append(("ok " if rc == 0 else f"rc={rc} ") + out.splitlines()[0][:300] if out else f"rc={rc}")
+        prestep.done(cfg, item)
         return respond(req, output={"pass": str(ok).lower(), "detail": ("PASS " if ok else "FAIL ") + " | ".join(lines)[:900]})
 
     if part == "main":

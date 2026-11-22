@@ -5,6 +5,7 @@ swarm.py, which it runs unchanged (swarm.py is pinned by running rounds). Option
   "allow_google_imagery": true   agy may read Google imagery hosts (owner, 2026-11-22: "you can now use street view to
                                  gather photos"; owner-approved Google allowlist). The other denies stay.
   "fix_brief": "file.md#Sections"  the fix pass gets this brief instead of the main brief.
+  "prestep": {"module": ...}     a module outside the repo prepares each step's working folder: see prestep.py.
 
 Everything else is swarm.py's behaviour: same node ids, outputs and checks.
 """
@@ -14,6 +15,7 @@ _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))  # -I drops th
 import json
 
 import agy_cleanup
+import prestep
 import swarm as S
 from common import load_request, round_config, run_main
 
@@ -33,7 +35,13 @@ def main():
                 v.pop("_brief_main", None)
     S.load_request = lambda: req   # swarm.main reads the request and the round through its own names
     S.round_config = lambda: cfg
-    return S.main()
+    item = req["task"]["id"].partition("__")[0]
+    if "valid" not in (req.get("kind") or "") and req["task"]["id"] != "swarm_report":
+        prestep.wrap(S, cfg, item, part)   # the round's pre-step, if any, prepares this step's working folder
+    out = S.main()
+    if part == "check":
+        prestep.done(cfg, item)
+    return out
 
 
 if __name__ == "__main__":
