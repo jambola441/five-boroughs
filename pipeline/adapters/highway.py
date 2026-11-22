@@ -77,7 +77,8 @@ def frames_step(cfg, tid):
     import page as P
     c = frames_cfg(cfg)
     folder = P.frames_folder(c)
-    g0 = lambda: _g0(folder, c["frames"].get("capture_guard", {}).get("max_diff_pct", 0.05))
+    need = [s["name"] for s in c["frames"].get("sites", [])]   # the lead (r14w): G0 on ALL the round's pairs
+    g0 = lambda: _g0(folder, c["frames"].get("capture_guard", {}).get("max_diff_pct", 0.05), need)
     if tid == "frames_ready":
         try:
             out = P.frames_ready(c)
@@ -91,14 +92,21 @@ def frames_step(cfg, tid):
     if not ok:
         raise RuntimeError(f"G0 capture guard failed: {why}")
     out = P.hydrogen_frames(c)
+    worse = [r for r in json.loads(out.get("rows") or "[]") if r.get("verdict") == "worse"]
+    if worse:   # the lead (r14w): a pair Hydrogen calls worse is a lead decision; it never passes on numbers
+        raise RuntimeError(f"Hydrogen judged {len(worse)} pair(s) worse: " + "; ".join(
+            f"{r['site']}: {'; '.join(r.get('new', []))[:160]}" for r in worse)[:900] + " (a lead decision)")
     return {**out, "capture_guard": why}
 
 
-def _g0(folder, lim):
+def _g0(folder, lim, need=()):
     f = os.path.join(folder, "guards_frames.json")
     if not os.path.exists(f):
         return False, "no guards_frames.json in the frames folder"
     pairs = json.load(open(f)).get("pairs", [])
+    missing = [n for n in need if not any(n in str(x.get("pose", "")) for x in pairs)]
+    if missing:
+        return False, f"no G0 row for {len(missing)} of {len(need)} pairs: {', '.join(missing[:6])}"
     v = lambda x: x.get("g0_pixel_diff_pct", x.get("capture_diff_pct"))
     bad = [x for x in pairs if v(x) is None or v(x) >= lim]
     if not pairs or bad:
@@ -249,6 +257,19 @@ def main():
         # absolute run against an empty reference (macmini): live's count is the limit; unreasoned rows stop
         run(cfg, ["$PY", "-I", "work/p2net/wall_near_lane.py", RC, "work/p2net/empty_ref"], "d_walls_abs.log")
         a = jload(f"work/p2net/wall_near_lane_{r}_nocbe_abs.json")
+        v3 = ""
+        if cfg.get("walls_report_also"):   # the lead (r14w): report walls on v3 too; v3a writes the same file name
+            base = f"work/p2net/wall_near_lane_{r}_nocbe_abs"
+            keep = os.path.join(project(HW), base + "_v3c.json")
+            if not os.path.exists(keep):
+                shutil.copy2(os.path.join(project(HW), base + ".json"), keep)
+            if not os.path.exists(os.path.join(project(HW), base + "_v3a.json")):
+                run(cfg, ["$PY", "-I", cfg["walls_report_also"], RC, "work/p2net/empty_ref"], "d_walls_v3a.log")
+                shutil.move(os.path.join(project(HW), base + ".json"), os.path.join(project(HW), base + "_v3a.json"))
+                shutil.copy2(keep, os.path.join(project(HW), base + ".json"))
+            b = jload(base + "_v3a.json")
+            v3 = (f"; walls on v3 ({os.path.basename(cfg['walls_report_also'])}, reported): on-road {b.get('on_road_m')} m / "
+                  f"{b.get('on_road_triangles')} triangles")
         wa = cfg.get("walls_abs") or {}
         if wa.get("metric") == "m":   # lead's decision (A), r14v on: absolute gate on metres vs live; triangles reported
             lim = wa["max_m"]
@@ -259,7 +280,7 @@ def main():
                    f"{a.get('on_road_unreasoned_triangles', 'n/a')}" + (" (must be 0)" if wa.get("unreasoned_gate") else "")
                    + (f"; step faces ('{a.get('step_face_class', 'overlapping decks at different heights')}') "
                       f"{a['on_road_step_face_triangles']} triangles / {a.get('on_road_step_face_m', '?')} m, reasoned by class"
-                      if "on_road_step_face_triangles" in a else ""))
+                      if "on_road_step_face_triangles" in a else "")) + v3
         else:
             lim = cfg.get("walls_abs_max_triangles", 620)
             ok = w["on_road_m"] == 0 and a["on_road_triangles"] <= lim and a.get("on_road_unreasoned_triangles", 0) == 0

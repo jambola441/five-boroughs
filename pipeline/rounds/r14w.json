@@ -183,5 +183,7 @@
    "the 125 kept-uncut triangles (359 m) are counted, not waived: register row 24 (overlapping decks), next deck-fix target, not r14w debt",
    "no debt pre-agreed; bundle stays NOT shippable until the page claim fix lands; nothing goes live without the owner's OK"
   ]
- }
+ },
+ "walls_report_also": "work/p2net/wall_near_lane_v3a.py",
+ "workers": 4
 }
