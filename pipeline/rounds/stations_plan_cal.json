@@ -1,7 +1,7 @@
 {
  "round": "stations_plan_cal: floor-plan stage on the 10 Neon calibration complexes",
  "kind": "research_swarm",
- "note": "owner: 'go with neon' and the floor-plan stage idea (2026-11-22); content by the stations coordinator (plan_cal/: brief_plan.md, plan_conventions.md, check_plan.py, render_plan.py, score_plan_cal.py); adapter swarm_plan.py (pipeline engineer). Inputs: plan_cal/cards = copies of calibration_neon/cards.",
+ "note": "owner: 'go with neon' and the floor-plan stage idea (2026-11-22); content by the stations coordinator (plan_cal/: brief_plan.md, plan_conventions.md, check_plan.py, render_plan.py, score_plan_cal.py); adapter swarm_plan.py (pipeline engineer). Inputs: plan_cal/cards = copies of calibration_neon/cards. Google imagery allowed for agy: owner, in the engineer's thread, 2026-11-22: 'you can now use street view to gather photos' (owner-approved Google allowlist).",
  "engine": "agy",
  "root": "work/walkable_stations/plan_cal",
  "lanes": [
@@ -47,7 +47,7 @@
    "cards/cx_{id}.md"
   ],
   "model": "gemini-4-neon-high",
-  "output_note": "ENGINE NOTES (this run is agy). Your working folder holds copies of plan_cx_{COMPLEX_ID}.json (empty at first) and your card files: edit them there; the graph copies them back. You cannot run check_plan.py: the script runs after you, then a repair pass gives you its findings. Use curl in your sandboxed terminal to fetch the card's cited pages and photos into your working folder and open them to recount; they are deleted after the turn. Never fetch Google Maps, Street View or Google-hosted photos. Your structured output carries the brief's turn output block."
+  "output_note": "ENGINE NOTES (this run is agy). Your working folder holds copies of plan_cx_{COMPLEX_ID}.json (empty at first) and your card files: edit them there; the graph copies them back. You cannot run check_plan.py: the script runs after you, then a repair pass gives you its findings. Use curl in your sandboxed terminal to fetch the card's cited pages and photos into your working folder and open them to recount; they are deleted after the turn. Google imagery is allowed (owner-approved Google allowlist, 2026-11-22): Street View, Google Maps place photos and 360s, Google-hosted photos. Keep any screenshot or fetched image only in your working folder (deleted after the turn) and cite the Google URL with saved null. Report every failed Google fetch under NOT_FOUND. Your structured output carries the brief's turn output block."
  },
  "helpers": [],
  "fix_brief": "brief_plan.md#Plan brief+Rules+Read first+Turn output+Repair pass",
@@ -137,5 +137,6 @@
    "PATTERN": "P6_deep_elevator"
   }
  },
- "stage": "plan"
+ "stage": "plan",
+ "allow_google_imagery": true
 }
