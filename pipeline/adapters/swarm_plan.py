@@ -18,6 +18,7 @@ import json
 import os
 import subprocess
 
+import agy_cleanup
 import swarm as S
 from common import OUT, deps, load_request, project, respond, round_config, run_main, validate
 
@@ -74,6 +75,7 @@ def main():
     req = load_request()
     tid = req["task"]["id"]
     cfg = round_config()
+    agy_cleanup.wrap(S)   # each agy call's own ~/.gemini brain folder goes after its step (owner's OK, 2026-11-22)
     if cfg.get("allow_google_imagery"):   # owner, 2026-11-22: "you can now use street view to gather photos"
         S.DENY_HOSTS[:] = []   # agy_settings reads it per call; swarm.py itself stays unchanged (pinned by r14x2-1)
     if "valid" in (req.get("kind") or ""):
