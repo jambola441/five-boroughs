@@ -23,7 +23,7 @@ PE = os.environ.get("PE_ROOT", "")
 LOG = os.path.join(RUNS, "_supervisor")
 os.makedirs(LOG, exist_ok=True)
 REASONS = {"d_tile_inventory": "tile_inventory_reasons.json", "d_walls": "wall_near_lane_reasons.json",
-           "d_void": "void_diff_reasons.json"}   # macmini's reasons files, in highways/work/p2net
+           "d_void": "void_diff_reasons.json", "d_lane_void": "lane_void_reasons.json"}   # macmini's reasons files, in highways/work/p2net
 HW = os.path.join(ROOT, "highways/work/p2net")
 
 
@@ -64,7 +64,7 @@ def plan(run_dir):
         elif s == "uncertain" and "deadline" in err:
             out.append((tid, ["--allow-uncertain"], "ran out of time; its job is idempotent", False))
         elif s == "failed" and tid == "frames_ready" and err.startswith("awaiting frames"):
-            f = (cfg.get("frames") or {}).get("folder")
+            f = frames_folder_of(cfg)
             if f and os.path.exists(os.path.join(resolve(f), "READY")):
                 out.append((tid, [], "frames READY", False))
         elif s == "failed" and tid == "lead_gate" and os.path.exists(os.path.join(run_dir, "approval.json")):
@@ -74,6 +74,14 @@ def plan(run_dir):
             if os.path.exists(rf) and os.path.getmtime(rf) > job_done_at(run_dir, tid):
                 out.append((tid, [], f"{REASONS[tid]} changed since the check ran", True))
     return out
+
+
+def frames_folder_of(cfg):
+    """A round's frames folder; a highway round without one renders into highways/work/census/frames/fdr_<round>."""
+    f = cfg.get("frames") or {}
+    if not f:
+        return None
+    return f.get("folder") or (f"highways/work/census/frames/fdr_{cfg['round']}" if cfg.get("kind") == "highway_round" else None)
 
 
 def unfinished(run_dir):
@@ -139,7 +147,7 @@ def sync_queue(run_dir):
     hard = sorted(k for k, t in T.items() if t.get("status") in ("failed", "uncertain")
                   and not any(w in (t.get("error") or "") for w in ("job running", "awaiting", "GB free", "deadline")))
     lead_wait = "lead_gate" in T and "awaiting lead approval" in (T["lead_gate"].get("error") or "")
-    fr = (cfg.get("frames") or {}).get("folder")
+    fr = frames_folder_of(cfg)
     frames_wait = ("frames_ready" in T and "awaiting frames" in (T["frames_ready"].get("error") or "")
                    and not (fr and os.path.exists(os.path.join(resolve(fr), "READY"))))
     if lead_wait and not os.path.exists(os.path.join(run_dir, "approval.json")):
@@ -148,7 +156,7 @@ def sync_queue(run_dir):
                       {"accept": res(acc) if acc else {}, "debt": cfg.get("debt", []) + cfg.get("qa_debt", []),
                        "changes": cfg.get("changes", [])}, run_dir, priority=1)
     if frames_wait:
-        Dq.raise_item(name, "frames_ready", "frames", "page-editor",
+        Dq.raise_item(name, "frames_ready", "frames", "macmini" if cfg.get("kind") == "highway_round" else "page-editor",
                       f"Render the frames for {cfg.get('round', name)} into {fr}, then drop READY",
                       {"request": os.path.join(run_dir, "frames_request.json")}, run_dir, priority=2)
     if hard:

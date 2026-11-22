@@ -131,6 +131,8 @@ def highway_tasks(cfg):
     stops = ["d_floor_fix_guard", "d_tile_inventory", "d_no_surface", "d_unsupported", "d_underlay", "d_void", "d_walls", "d_columns"]
     if cfg.get("crossing_check"):   # macmini switches this on once its r14u rules are in
         stops.append("d_crossing")
+    if cfg.get("lane_void_check"):   # r14w: driver-height void guard (lead 21 Nov)
+        stops.append("d_lane_void")
     t = [node("h_guard", "highway", ["pass", "writes", "free_gb"], validated=True),
          node("h_assemble", "highway", ["pass"], after=["h_guard"], validated=True)] + passes + [
          node("h_part_move", "highway", ["pass"], after=[last], validated=True),
@@ -139,8 +141,11 @@ def highway_tasks(cfg):
               validated=True)] + [
          node(s, "highway", ["pass", "detail"], after=["h_cbe_copy"], validated=True) for s in stops] + [
          node("d_listed", "highway", ["pass", "detail"], after=["h_cbe_copy"]),
-         node("highway_accept", "round_live", ["rules_pass", "decision", "reasons"], after=stops + ["d_listed"],
-              validated=True),
+         ] + ([node("frames_ready", "highway", ["images", "request"], after=stops + ["d_listed"]),
+               node("hydrogen_frames", "highway", ["frames", "verdicts", "rows", "capture_guard"], after=["frames_ready"],
+                    validated=True)] if cfg.get("frames") else []) + [
+         node("highway_accept", "round_live", ["rules_pass", "decision", "reasons"],
+              after=stops + ["d_listed"] + (["hydrogen_frames"] if cfg.get("frames") else []), validated=True),
          node("lead_gate", "lead", ["approved_by", "decision", "class_rows", "bundle"], after=["highway_accept"]),
          node("register_update", "lead", ["row"], after=["lead_gate"])]
     return t

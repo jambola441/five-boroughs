@@ -20,7 +20,7 @@ import os
 import shutil
 import subprocess
 
-from common import deps, load_request, project, respond, round_config, run_job, run_main, validate, OUT
+from common import Running, deps, load_request, project, respond, round_config, run_job, run_main, validate, OUT
 
 HW = "highways"
 CBE = "x10_z-17 x10_z-18 x11_z-18 x12_z-18 x13_z-17 x13_z-18 x14_z-17 x15_z-17 x8_z-18 x9_z-17 x9_z-18".split()
@@ -60,6 +60,53 @@ def guard(cfg):
     return errs, p, free
 
 
+def frames_cfg(cfg):
+    """The round's frames block in the page round's shape: macmini's sites become the poses; panels prev | this round."""
+    f = dict(cfg["frames"])
+    f.setdefault("folder", f"highways/work/census/frames/fdr_{cfg['round']}")
+    f.setdefault("panels", [f.get("pairs_vs", cfg.get("prev", "before")), cfg["round"]])
+    f.setdefault("poses", [s["name"] + (f" (tile {s['tile']})" if s.get("tile") else "") + (f": {s['why']}" if s.get("why") else "")
+                           for s in f.get("sites", [])])
+    return dict(cfg, frames=f, mode=cfg.get("mode", "live"))
+
+
+def frames_step(cfg, tid):
+    """frames_ready: macmini renders the pairs into the folder, writes guards_frames.json and drops READY; G0 (the
+    lead's capture guard) must pass before Hydrogen sees anything, else macmini re-shoots (remove READY, re-render, drop
+    it again). hydrogen_frames: the page round's per-site review, plus the G0 summary."""
+    import page as P
+    c = frames_cfg(cfg)
+    folder = P.frames_folder(c)
+    g0 = lambda: _g0(folder, c["frames"].get("capture_guard", {}).get("max_diff_pct", 0.05))
+    if tid == "frames_ready":
+        try:
+            out = P.frames_ready(c)
+        except P.Waiting as e:
+            raise Running(str(e).replace("from the page editor", "from macmini"))
+        ok, why = g0()
+        if not ok:
+            raise Running(f"awaiting frames from macmini: G0 capture guard failed ({why}); re-shoot both, then drop READY again")
+        return {**out, "request": out["request"]}
+    ok, why = g0()
+    if not ok:
+        raise RuntimeError(f"G0 capture guard failed: {why}")
+    out = P.hydrogen_frames(c)
+    return {**out, "capture_guard": why}
+
+
+def _g0(folder, lim):
+    f = os.path.join(folder, "guards_frames.json")
+    if not os.path.exists(f):
+        return False, "no guards_frames.json in the frames folder"
+    pairs = json.load(open(f)).get("pairs", [])
+    v = lambda x: x.get("g0_pixel_diff_pct", x.get("capture_diff_pct"))
+    bad = [x for x in pairs if v(x) is None or v(x) >= lim]
+    if not pairs or bad:
+        return False, f"{len(bad)} of {len(pairs)} pairs at or over {lim} % on unchanged parts: " + ", ".join(
+            f"{x.get('pose')} {v(x)}" for x in bad[:10])
+    return True, f"G0 passed: {len(pairs)} pairs under {lim} % on unchanged parts (max {max(v(x) for x in pairs)} %)"
+
+
 def main():
     req = load_request()
     tid = req["task"]["id"]
@@ -71,6 +118,9 @@ def main():
     p = paths(cfg)
     R, RC, r = p["R"], p["RC"], cfg["round"]
     plan_only = cfg.get("mode") == "plan_only"
+
+    if tid in ("frames_ready", "hydrogen_frames"):   # r14w on: the page round's frames hand-off and Hydrogen review
+        return respond(req, output=frames_step(cfg, tid))
 
     if tid == "h_guard":
         errs, p, free = guard(cfg)
@@ -123,6 +173,11 @@ def main():
                            if k in j)
             return respond(req, output={"pass": "true", "step": f"{st}: {j.get('removed_by_material_retaining_wall', 0)} "
                                                               f"retaining_wall triangles removed, nothing else{kept}"})
+        if st == "wall_band_clip":   # r14w: cuts retaining_wall faces only (barriers/railings/medians/parapets never touched)
+            j = jload(f"work/p2net/wall_band_clip_{r}.json")
+            return respond(req, output={"pass": "true", "step": f"{st}: {j.get('clipped_triangles', 0)} wall triangles cut, "
+                                                              f"{j.get('removed_m2', 0)} m2 removed, {j.get('headwall_pieces', 0)} headwall pieces, "
+                                                              f"{j.get('kept_by_keep_list', 0)} left uncut by the keep list"})
         return respond(req, output={"pass": "true", "step": st})
 
     if tid == "h_cbe_copy":
@@ -218,6 +273,15 @@ def main():
         ok = j["column_on_pavement"] == 0 and j["column_x_barrier"] == 0
         return respond(req, output={"pass": str(ok).lower(), "detail": f"posts {j['posts']}, on pavement "
                                     f"{j['column_on_pavement']}, across a barrier {j['column_x_barrier']} (both must be 0)"})
+    if tid == "d_lane_void":
+        # r14w (lead 21 Nov): driver-height openings within 3 m of a lane edge, new vs the previous round; stops on any
+        # new hole without a reason (lane_void_reasons.json)
+        run(cfg, ["$PY", "-I", "work/p2net/lane_void_check.py", RC, p["prev_nocbe"]], "d_lane_void.log")
+        j = jload(f"work/p2net/lane_void_check_{r}_nocbe.json")
+        ok = j["new_unreasoned"] == 0
+        return respond(req, output={"pass": str(ok).lower(), "detail": f"new driver-height holes {j['new_cells']} cells, unreasoned "
+                                    f"{j['new_unreasoned']} (must be 0); openings onto a lower road (portals, listed) "
+                                    f"{j.get('opened_to_road_only_cells', 0)} cells; tiles {len(j['tiles'])}"})
     if tid == "d_crossing":
         run(cfg, ["$PY", "-I", "work/p2net/crossing_check.py", f"work/p2net/final_fdr/{r}_profile_all.json", R], "d_crossing.log")
         c = jload(f"work/p2net/crossing_check_{r}.json")
