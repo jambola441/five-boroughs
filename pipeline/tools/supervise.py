@@ -69,11 +69,6 @@ def plan(run_dir):
                 out.append((tid, [], "frames READY", False))
         elif s == "failed" and tid == "lead_gate" and os.path.exists(os.path.join(run_dir, "approval.json")):
             out.append((tid, [], "approval.json present", False))
-        elif s == "failed" and tid == "d_tile_diff" and (cfg.get("tile_diff") or {}).get("reasons"):
-            rf = os.path.join(ROOT, "highways", cfg["tile_diff"]["reasons"])   # relative to highways/, like the adapter
-            ran = os.path.join(run_dir, "tile_diff.json")
-            if os.path.exists(rf) and os.path.exists(ran) and os.path.getmtime(rf) > os.path.getmtime(ran):
-                out.append((tid, [], "tile_diff reasons changed since the check ran", False))
         elif s == "failed" and tid in REASONS:
             rf = os.path.join(HW, REASONS[tid])
             if os.path.exists(rf) and os.path.getmtime(rf) > job_done_at(run_dir, tid):
@@ -166,8 +161,9 @@ def sync_queue(run_dir):
                       {"request": os.path.join(run_dir, "frames_request.json")}, run_dir, priority=2)
     if hard:
         owner = STREAM_OWNER.get(cfg.get("kind"), "lead")
-        if cfg.get("kind") == "highway_round" and ("hydrogen_frames" in hard or any(
-                "a lead decision" in (T[k].get("error") or "") for k in hard)):   # the lead: 'worse' and G0 v2 repeats are its call
+        if cfg.get("kind") == "highway_round" and ("hydrogen_frames" in hard or "d_tile_diff" in hard or any(
+                "a lead decision" in (T[k].get("error") or "") for k in hard)):   # the lead: 'worse', G0 v2 repeats and
+            # an unlisted tile difference are its call (d_tile_diff never re-runs on its own: the lead answers 'reasons')
             owner = "lead"
         key = "+".join(hard)
         for it in Dq.items():   # one open verdict per run: a newer set of stopped steps replaces the older item
@@ -214,7 +210,7 @@ def sync_queue(run_dir):
                       open(os.path.join(run_dir, "approval.json"), "w"))
         elif (k == "approval" and a["choice"] == "reject") or (k == "verdict" and a["choice"] == "fix"):
             open(os.path.join(run_dir, "RETIRED"), "w").write(f"{a['choice']} via the decision queue ({note})\n")
-        elif k == "verdict" and a["choice"] == "reasons" and cfg.get("kind") == "research_swarm":
+        elif k == "verdict" and a["choice"] == "reasons" and (cfg.get("kind") == "research_swarm" or "d_tile_diff" in it["step"]):
             # a swarm check has no reasons file: the owner says the check (or its input) is fixed, so retry it
             for step in it["step"].split("+"):
                 r = subprocess.run(["irrigator", "retry", "--allow-uncertain", os.path.join(run_dir, "run"), step],
