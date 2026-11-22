@@ -1,0 +1,141 @@
+{
+ "round": "stations_plan_cal: floor-plan stage on the 10 Neon calibration complexes",
+ "kind": "research_swarm",
+ "note": "owner: 'go with neon' and the floor-plan stage idea (2026-11-22); content by the stations coordinator (plan_cal/: brief_plan.md, plan_conventions.md, check_plan.py, render_plan.py, score_plan_cal.py); adapter swarm_plan.py (pipeline engineer). Inputs: plan_cal/cards = copies of calibration_neon/cards.",
+ "engine": "agy",
+ "root": "work/walkable_stations/plan_cal",
+ "lanes": [
+  [
+   "321",
+   "14"
+  ],
+  [
+   "262",
+   "241"
+  ],
+  [
+   "81",
+   "431"
+  ],
+  [
+   "626",
+   "625"
+  ],
+  [
+   "46",
+   "300"
+  ]
+ ],
+ "conventions": "plan_conventions.md",
+ "read_dirs": [
+  "work/walkable_stations",
+  "subways"
+ ],
+ "deny_read": [
+  "pe:",
+  "work/walkable_stations/plan_cal/truth",
+  "work/walkable_stations/calibration_audit",
+  "work/walkable_stations/calibration/cards",
+  "work/walkable_stations/calibration_hydrogen/cards",
+  "work/walkable_stations/calibration/helpers"
+ ],
+ "main": {
+  "brief": "brief_plan.md#Plan brief+Rules+Read first+Steps+Turn output",
+  "writes": [
+   "plans/plan_cx_{id}.json",
+   "cards/cx_{id}.json",
+   "cards/cx_{id}.md"
+  ],
+  "model": "gemini-4-neon-high",
+  "output_note": "ENGINE NOTES (this run is agy). Your working folder holds copies of plan_cx_{COMPLEX_ID}.json (empty at first) and your card files: edit them there; the graph copies them back. You cannot run check_plan.py: the script runs after you, then a repair pass gives you its findings. Use curl in your sandboxed terminal to fetch the card's cited pages and photos into your working folder and open them to recount; they are deleted after the turn. Never fetch Google Maps, Street View or Google-hosted photos. Your structured output carries the brief's turn output block."
+ },
+ "helpers": [],
+ "fix_brief": "brief_plan.md#Rules+Turn output+Repair pass",
+ "check": [
+  "{NYC_ROOT}/.venv/bin/python",
+  "-I",
+  "{NYC_ROOT}/work/walkable_stations/plan_cal/check_plan.py",
+  "{plan}"
+ ],
+ "check_note": "check_plan.py exits 1 only for a malformed plan; FAIL/FLAG findings are in plans/plan_check_cx_{id}.json and go to the repair pass, then to the owner's sheet.",
+ "after": [
+  [
+   "{NYC_ROOT}/.venv/bin/python",
+   "-I",
+   "{NYC_ROOT}/work/walkable_stations/plan_cal/check_plan.py",
+   "{plan}"
+  ],
+  [
+   "{NYC_ROOT}/.venv/bin/python",
+   "-I",
+   "{NYC_ROOT}/work/walkable_stations/plan_cal/render_plan.py",
+   "{plan}"
+  ],
+  [
+   "{NYC_ROOT}/.venv/bin/python",
+   "-I",
+   "{NYC_ROOT}/work/walkable_stations/calibration_neon/check_card.py",
+   "{NYC_ROOT}/work/walkable_stations/plan_cal/cards/cx_{id}.json"
+  ]
+ ],
+ "after_note": "after the repair pass: re-check, render the SVG, then the card gate on the (possibly corrected) card. Sheet = plans/plan_check_cx_{id}.json items with sheet=true + plans/plan_cx_{id}.svg.",
+ "score": [
+  "{NYC_ROOT}/.venv/bin/python",
+  "-I",
+  "{NYC_ROOT}/work/walkable_stations/plan_cal/tools/score_plan_cal.py"
+ ],
+ "workers": 12,
+ "vars": {
+  "321": {
+   "COMPLEX_ID": "321",
+   "NAME": "18 St",
+   "PATTERN": "P1_platform_fare"
+  },
+  "14": {
+   "COMPLEX_ID": "14",
+   "NAME": "23 St",
+   "PATTERN": "P1_platform_fare"
+  },
+  "262": {
+   "COMPLEX_ID": "262",
+   "NAME": "67 Av",
+   "PATTERN": "P2_ind_mezzanine"
+  },
+  "241": {
+   "COMPLEX_ID": "241",
+   "NAME": "15 St-Prospect Park",
+   "PATTERN": "P2_ind_mezzanine"
+  },
+  "81": {
+   "COMPLEX_ID": "81",
+   "NAME": "111 St",
+   "PATTERN": "P3_el_house"
+  },
+  "431": {
+   "COMPLEX_ID": "431",
+   "NAME": "Intervale Av",
+   "PATTERN": "P3_el_house"
+  },
+  "626": {
+   "COMPLEX_ID": "626",
+   "NAME": "Botanic Garden / Franklin Av-Medgar Evers College",
+   "PATTERN": "P5_transfer"
+  },
+  "625": {
+   "COMPLEX_ID": "625",
+   "NAME": "Delancey St-Essex St",
+   "PATTERN": "P5_transfer"
+  },
+  "46": {
+   "COMPLEX_ID": "46",
+   "NAME": "Cortelyou Rd",
+   "PATTERN": "P4_opencut_house"
+  },
+  "300": {
+   "COMPLEX_ID": "300",
+   "NAME": "191 St",
+   "PATTERN": "P6_deep_elevator"
+  }
+ },
+ "stage": "plan"
+}
