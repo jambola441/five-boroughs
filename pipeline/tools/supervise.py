@@ -70,7 +70,7 @@ def plan(run_dir):
         elif s == "failed" and tid == "lead_gate" and os.path.exists(os.path.join(run_dir, "approval.json")):
             out.append((tid, [], "approval.json present", False))
         elif s == "failed" and tid == "d_tile_diff" and (cfg.get("tile_diff") or {}).get("reasons"):
-            rf = os.path.join(HW, cfg["tile_diff"]["reasons"])   # the round's own reasons file; the check runs inline
+            rf = os.path.join(ROOT, "highways", cfg["tile_diff"]["reasons"])   # relative to highways/, like the adapter
             ran = os.path.join(run_dir, "tile_diff.json")
             if os.path.exists(rf) and os.path.exists(ran) and os.path.getmtime(rf) > os.path.getmtime(ran):
                 out.append((tid, [], "tile_diff reasons changed since the check ran", False))
