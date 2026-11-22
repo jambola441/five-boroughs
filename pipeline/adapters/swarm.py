@@ -98,6 +98,20 @@ def agy_settings(cfg):
     return json.dumps({"permissions": {"allow": allow, "deny": deny}})
 
 
+def last_json(text, *keys):
+    """The last JSON object in text that has all the given keys (agy can wrap its JSON in status lines or prose)."""
+    dec, best, i = json.JSONDecoder(), None, text.find("{")
+    while i != -1:
+        try:
+            obj, end = dec.raw_decode(text, i)
+            if isinstance(obj, dict) and all(k in obj for k in keys):
+                best = obj
+            i = text.find("{", end)
+        except ValueError:
+            i = text.find("{", i + 1)
+    return best
+
+
 def agent_agy(name, prompt, cfg, model, schema, files=()):
     """One agy -p job in its own folder under AGY_WS. files: the item's files, copied in from the root first and copied
     back after; everything else the agent fetched there (pages, photos) is deleted with the folder."""
@@ -115,17 +129,12 @@ def agent_agy(name, prompt, cfg, model, schema, files=()):
     rc = run_job(name, cmd, ws, log)
     rec = json.load(open(os.path.join(OUT, "jobs", name, "job.json")))
     mins = round((os.path.getmtime(os.path.join(OUT, "jobs", name, "rc")) - rec["started"]) / 60, 1)
-    try:
-        d = json.load(open(os.path.join(OUT, log)))
-    except ValueError:
+    d = last_json(open(os.path.join(OUT, log)).read(), "response")   # agy may print status lines before its JSON
+    if d is None:
         raise RuntimeError(f"{name}: agy rc={rc}, unparseable output (see {log})")
     TOKENS[name] = (d.get("usage") or {}).get("total_tokens", 0)
     resp = d.get("response") or ""
-    try:
-        out = json.loads(resp)
-    except ValueError:
-        m = re.findall(r"```json\s*(\{.*?\})\s*```", resp, re.S)
-        out = json.loads(m[-1]) if m else None
+    out = last_json(resp, *schema.get("required", []))   # the answer may have text before or around its JSON
     if d.get("status") != "SUCCESS" or not isinstance(out, dict):
         raise RuntimeError(f"{name}: agy status {d.get('status')}, no structured output: {resp[:200]}")
     for f in files:   # the item's files back into the root; the folder (and anything fetched into it) goes
