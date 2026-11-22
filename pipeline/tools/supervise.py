@@ -152,9 +152,15 @@ def sync_queue(run_dir):
                    and not (fr and os.path.exists(os.path.join(resolve(fr), "READY"))))
     if lead_wait and not os.path.exists(os.path.join(run_dir, "approval.json")):
         acc = next((k for k in ("page_accept", "qa_accept", "highway_accept", "explore_accept") if k in T), None)
+        # the lead (2026-11-22): under_deck isn't gated, but its clusters belong in the lead-gate summary
+        cl = os.path.join(run_dir, "combined_layer.json")
+        ud = json.load(open(cl)).get("under_deck_clusters", []) if os.path.exists(cl) else None
         Dq.raise_item(name, "lead_gate", "approval", "lead", f"Approve {cfg.get('round', name)}?",
                       {"accept": res(acc) if acc else {}, "debt": cfg.get("debt", []) + cfg.get("qa_debt", []),
-                       "changes": cfg.get("changes", [])}, run_dir, priority=1)
+                       "changes": cfg.get("changes", []),
+                       **({"under_deck": {"m2": round(sum(c["m2"] for c in ud), 2), "clusters": [
+                           {k: c.get(k) for k in ("tile", "m2", "deck_y_min", "deck_over_b_min", "x", "z")} for c in ud]}}
+                          if ud is not None else {})}, run_dir, priority=1)
     if frames_wait:
         Dq.raise_item(name, "frames_ready", "frames", "macmini" if cfg.get("kind") == "highway_round" else "page-editor",
                       f"Render the frames for {cfg.get('round', name)} into {fr}, then drop READY",
@@ -210,13 +216,19 @@ def sync_queue(run_dir):
                       open(os.path.join(run_dir, "approval.json"), "w"))
         elif (k == "approval" and a["choice"] == "reject") or (k == "verdict" and a["choice"] == "fix"):
             open(os.path.join(run_dir, "RETIRED"), "w").write(f"{a['choice']} via the decision queue ({note})\n")
-        elif k == "verdict" and a["choice"] == "reasons" and (cfg.get("kind") == "research_swarm" or "d_tile_diff" in it["step"]):
-            # a swarm check has no reasons file: the owner says the check (or its input) is fixed, so retry it
+        elif k == "verdict" and a["choice"] == "reasons" and (cfg.get("kind") == "research_swarm" or "d_tile_diff" in it["step"]
+                                                               or "cl_gate" in it["step"]):
+            # a swarm check (or d_tile_diff / cl_gate, whose reasons come after the stop) is re-run on 'reasons'
+            ok = True
             for step in it["step"].split("+"):
                 r = subprocess.run(["irrigator", "retry", "--allow-uncertain", os.path.join(run_dir, "run"), step],
                                    capture_output=True, text=True, env={**os.environ, "PIPELINE_OUT": run_dir})
-                event(name, "retry", step=step, why="reasons (swarm)", ok=r.returncode == 0,
+                ok = ok and r.returncode == 0
+                event(name, "retry", step=step, why="reasons", ok=r.returncode == 0,
                       out=(r.stdout + r.stderr).strip()[-200:])
+            if not ok:   # e.g. "stop the controller before retrying a node": leave it unapplied, try again next pass
+                event(name, "queue", item=it["id"], change="deferred: retry failed")
+                continue
         elif k == "verdict" and a["choice"] == "debt":
             Dq.raise_item(name, it["step"], "debt", "lead", f"Put {cfg.get('round', name)}'s stop at {it['step']} "
                           f"on the debt list? ({note})", {**it["evidence"], "request": note}, run_dir, priority=1)
