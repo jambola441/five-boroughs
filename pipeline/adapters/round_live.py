@@ -152,12 +152,122 @@ def t_freeze(cfg):
         if bad or files != set(M):
             return None, f"{loc}: {len(bad)} mismatched, {len(files ^ set(M))} extra/missing files"
         shas[os.path.basename(man)] = h(man)
+    # POST_R14X2 item 7 (the lead, 2026-11-22): the round's index also sends tiles to other folders (r6t2: 1,627 to v1);
+    # every referenced file goes into a refs manifest, and v1's files must match the lead's v1 pin
+    refs, err = index_refs(r)
+    if err:
+        return None, err
+    pin_file, pin12, pin_n = (cfg.get("v1_pin") or {}).get("file", V1_PIN[0]), (cfg.get("v1_pin") or {}).get("sha12", V1_PIN[1]), \
+        (cfg.get("v1_pin") or {}).get("files", V1_PIN[2])
+    pin, err = v1_pin(pin_file, pin12, pin_n)
+    if err:
+        return None, err
+    ter = project(f"{TS}/p1/terrain")
+    man_refs, by = {}, {}
+    for rel in sorted(refs):
+        if rel.startswith(r + "/"):
+            continue   # the round's own files: already verified against its manifest above
+        p = os.path.join(ter, rel)
+        if not os.path.exists(p):
+            return None, f"the index references {rel}, which doesn't exist"
+        man_refs[rel] = h(p)
+        if rel.startswith("v1/") and pin.get(rel[3:]) != man_refs[rel]:
+            return None, f"{rel} doesn't match the lead's v1 pin ({os.path.basename(pin_file)})"
+        by[rel.split("/")[0]] = by.get(rel.split("/")[0], 0) + 1
+    refs_path = os.path.join(OUT, f"manifest_index_refs_{r}_sha256.json")
+    with open(refs_path, "w") as f:
+        json.dump(man_refs, f, indent=0, sort_keys=True)
     if cfg["mode"] != "existing":
         for loc, _ in pairs:
             subprocess.run(["chmod", "-R", "a-w", project(loc)], check=True)
+        if by.get("v1"):   # nothing writes into v1 (checked 2026-11-22: no file changed since 2026-11-15); now it can't
+            subprocess.run(["chmod", "-R", "a-w", os.path.join(ter, "v1")], check=True)
     tsha = shas[f"manifest_terrain_{r}_sha256.json"]
     return {"terrain_sha": tsha, "verified": "true",
-            "matches_expected": str(cfg.get("expected_sha") in (None, "", tsha)).lower()}, None
+            "matches_expected": str(cfg.get("expected_sha") in (None, "", tsha)).lower(),
+            "refs_sha": h(refs_path), "refs_outside": json.dumps(by), "v1_pin": f"{len(pin)} files match {pin12}"}, None
+
+
+SEAM = {"seam_check_v2.py": f"{TS}/p2/tools/seam_check_v2.py", "seam_check_config.json": f"{TS}/p2/tools/seam_check_config.json"}
+
+
+def seam_gate(cfg):
+    """POST_R14X2 item 8 (the lead, 2026-11-22): the terrain study's seam stop. Round file:
+    "seam_check": {"scripts_sha": {"seam_check_v2.py": "5467cc1a", "seam_check_config.json": "ec42c96c"}, "prev": <folder>}.
+    Both files are pinned by sha256 prefix and re-checked before the run. Exit 0 PASS, 1 FAIL, 2 bad input; bad input
+    (and any other exit) fails closed. Returns (output, error): a failed seam check is pass false, never an error."""
+    sc = cfg.get("seam_check") or {}
+    pins = sc.get("scripts_sha") or {}
+    for name, rel in SEAM.items():
+        want = str(pins.get(name) or "")
+        if len(want) < 8:
+            return None, f"seam_check.scripts_sha has no pin for {name}"
+        p = project(rel)
+        got = hashlib.sha256(open(p, "rb").read()).hexdigest() if os.path.exists(p) else "missing"
+        if not got.startswith(want):
+            return None, f"{name} is {got[:12]}, pinned {want}: the step stops before it runs"
+    prev = sc.get("prev", cfg.get("prev", ""))
+    rc = sh([PY, project(SEAM["seam_check_v2.py"])], project(TS), "gate_seam.log",
+            env={"R6N": cfg["round"], "PREV": prev, "CONFIG": project(SEAM["seam_check_config.json"])})
+    res = project(f"{TS}/p2/checks/{cfg['round']}_seam_check_v2.json")
+    summ = json.load(open(res)).get("summary", {}) if rc in (0, 1) and os.path.exists(res) else {}
+    if rc == 0 and summ.get("PASS") is True:
+        return {"pass": "true", "detail": f"seam PASS: {summ.get('mismatches')} mismatches, 0 fails (prev {prev or 'none'})"}, None
+    if rc == 1:
+        return {"pass": "false", "detail": f"seam FAIL: {summ.get('fails')} failing vertices of {summ.get('mismatches')} "
+                                           f"mismatches ({json.dumps(summ.get('by_lod', {}))[:300]})"}, None
+    return {"pass": "false", "detail": f"seam check exit {rc}" + (" (bad input)" if rc == 2 else "")
+            + f": fails closed; see {os.path.join(OUT, 'gate_seam.log')}"}, None
+
+
+V1_PIN = ("work/lead_reviews/manifest_terrain_v1_sha256.txt", "89c4cbd0acd7", 16764)   # the lead's v1 pin
+TILE_DIRS = {"v1c": None, "v1b": "v1b"}   # how the page reads a tile's 'v' / 'water_v': v1c -> the round, v1b -> v1b, else v1
+
+
+def index_refs(r):
+    """Every file the round's index.json sends the page to, as paths under p1/terrain (seam_check_v2's rule:
+    tiles by 'v', water by 'water_v', the overview from the first folder of round, v1b, v1 that has it)."""
+    ter = project(f"{TS}/p1/terrain")
+    try:
+        ix = json.load(open(os.path.join(ter, r, "index.json")))
+    except (OSError, ValueError) as e:
+        return None, f"no readable index.json for {r}: {e}"
+    fold = lambda v: (TILE_DIRS.get(v) or r) if v in TILE_DIRS else "v1"
+    nl = len(ix.get("lods") or []) or 4
+    refs = set()
+    for t, e in (ix.get("tiles") or {}).items():
+        refs.update(f"{fold(e.get('v'))}/tiles/{t}_l{l}.bin" for l in range(nl))
+        if e.get("water_file"):
+            refs.add(f"{fold(e.get('water_v'))}/water/{t}_water.bin")
+    ov = (ix.get("overview") or {}).get("file")
+    if ov:
+        d = next((d for d in (r, "v1b", "v1") if os.path.exists(os.path.join(ter, d, ov))), None)
+        if d is None:
+            return None, f"the index's overview {ov} is in none of {r}, v1b, v1"
+        refs.add(f"{d}/{ov}")
+    return refs, None
+
+
+def v1_pin(pin_file, sha12, n):
+    """The lead's v1 pin ('<sha256>  ./<path>' lines): the pin file's own sha, then v1 exactly as pinned."""
+    p = project(pin_file)
+    if not os.path.exists(p):
+        return None, f"no v1 pin at {pin_file}"
+    if hashlib.sha256(open(p, "rb").read()).hexdigest()[:len(sha12)] != sha12:
+        return None, f"the v1 pin file isn't the lead's ({pin_file} sha != {sha12})"
+    pin = {}
+    for line in open(p):
+        if line.strip():
+            s, path = line.rstrip("\n").split(None, 1)
+            pin[path.strip()[2:] if path.strip().startswith("./") else path.strip()] = s
+    v1 = project(f"{TS}/p1/terrain/v1")
+    have = {os.path.relpath(os.path.join(d, f), v1) for d, _, fs in os.walk(v1) for f in fs}
+    if len(pin) != n or have != set(pin):
+        return None, f"v1 has {len(have)} files, the pin {len(pin)} (want {n}); {len(have ^ set(pin))} differ"
+    bad = [k for k, v in pin.items() if hashlib.sha256(open(os.path.join(v1, k), "rb").read()).hexdigest() != v]
+    if bad:
+        return None, f"{len(bad)} v1 files don't match the lead's pin: {', '.join(bad[:5])}"
+    return pin, None
 
 
 # ---------- QA ----------
@@ -355,6 +465,9 @@ def main():
         return respond(req, output={"pass": str(not bad).lower(), "detail": f"{len(bad)} pieces over {rule['max_cm_at_80']} cm at 80 km/h"})
     if tid == "bundle":
         return respond(req, output=bundle_verdict(gate_numbers(d["qa_round_gate"]), cfg))
+    if tid == "gate_seam":
+        out, err = seam_gate(cfg)
+        return respond(req, output=out) if out else respond(req, "settled", error=err)
     if tid.startswith("gate_"):
         n = gate_numbers(d["qa_round_gate"])
         ok, why = q_rule(tid[len("gate_"):], n, cfg)

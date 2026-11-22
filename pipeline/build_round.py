@@ -132,6 +132,8 @@ def terrain_live_tasks(pairs, cfg=None):
     lgt, lgs = lane_guard_tasks(cfg)
     clt, cls = combined_layer_tasks(cfg)
     lgt, lgs = lgt + clt, lgs + cls
+    if cfg and cfg.get("seam_check"):   # the lead (2026-11-22): the terrain study's seam stop, both files sha-pinned
+        lgt, lgs = lgt + [node("gate_seam", "round_live", ["pass", "detail"], after=["t_freeze"], validated=True)], lgs + ["gate_seam"]
     t = [
         node("t_build", "round_live", ["built", "frozen"], validated=True),
         node("t_checks", "round_live", ["free_ends", "crest_8pct", "crest_12pct", "crest_widened_8",
