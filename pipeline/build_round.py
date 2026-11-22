@@ -153,6 +153,8 @@ def highway_tasks(cfg):
         stops.append("d_crossing")
     if cfg.get("lane_void_check"):   # r14w: driver-height void guard (lead 21 Nov)
         stops.append("d_lane_void")
+    if cfg.get("tile_diff"):   # r14t2 (the lead): every file differing from a frozen round, each with a reason
+        stops.append("d_tile_diff")
     t = [node("h_guard", "highway", ["pass", "writes", "free_gb"], validated=True),
          node("h_assemble", "highway", ["pass"], after=["h_guard"], validated=True)] + passes + [
          node("h_part_move", "highway", ["pass"], after=[last], validated=True),

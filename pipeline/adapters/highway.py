@@ -20,7 +20,7 @@ import os
 import shutil
 import subprocess
 
-from common import Running, deps, load_request, project, respond, round_config, run_job, run_main, validate, OUT
+from common import Running, deps, load_request, project, respond, round_config, run_job, run_main, sha256, validate, OUT
 
 HW = "highways"
 CBE = "x10_z-17 x10_z-18 x11_z-18 x12_z-18 x13_z-17 x13_z-18 x14_z-17 x15_z-17 x8_z-18 x9_z-17 x9_z-18".split()
@@ -268,13 +268,13 @@ def main():
         w = jload(f"work/p2net/wall_near_lane_{r}_nocbe.json")
         # absolute run against an empty reference (macmini): live's count is the limit; unreasoned rows stop
         run(cfg, ["$PY", "-I", "work/p2net/wall_near_lane.py", RC, "work/p2net/empty_ref"], "d_walls_abs.log")
-        a = jload(f"work/p2net/wall_near_lane_{r}_nocbe_abs.json")
+        base = f"work/p2net/wall_near_lane_{r}_nocbe_abs"
+        keep = os.path.join(project(HW), base + "_v3c.json")
+        if cfg.get("walls_report_also") and not os.path.exists(keep):   # set v3c aside BEFORE v3a can run (r14x-1's bug)
+            shutil.copy2(os.path.join(project(HW), base + ".json"), keep)
+        a = json.load(open(keep)) if os.path.exists(keep) else jload(base + ".json")   # v3c, whatever v3a is doing
         v3 = ""
         if cfg.get("walls_report_also"):   # the lead (r14w): report walls on v3 too; v3a writes the same file name
-            base = f"work/p2net/wall_near_lane_{r}_nocbe_abs"
-            keep = os.path.join(project(HW), base + "_v3c.json")
-            if not os.path.exists(keep):
-                shutil.copy2(os.path.join(project(HW), base + ".json"), keep)
             if not os.path.exists(os.path.join(project(HW), base + "_v3a.json")):
                 run(cfg, ["$PY", "-I", cfg["walls_report_also"], RC, "work/p2net/empty_ref"], "d_walls_v3a.log")
                 shutil.move(os.path.join(project(HW), base + ".json"), os.path.join(project(HW), base + "_v3a.json"))
@@ -306,6 +306,30 @@ def main():
         ok = j["column_on_pavement"] == 0 and j["column_x_barrier"] == 0
         return respond(req, output={"pass": str(ok).lower(), "detail": f"posts {j['posts']}, on pavement "
                                     f"{j['column_on_pavement']}, across a barrier {j['column_x_barrier']} (both must be 0)"})
+    if tid == "d_tile_diff":
+        # the lead (r14t2): list every file of the round that differs from a frozen round's SHA256SUMS (changed, new,
+        # missing), each with its reason from the round's reasons file; stops on any without a reason
+        td = cfg["tile_diff"]
+        sums = {}
+        for line in open(project(f"{HW}/work/p2net/final_fdr/{td['vs']}.SHA256SUMS")):
+            if line.strip():
+                h, name = line.split(None, 1)
+                sums[name.strip().lstrip("*")] = h
+        folder = project(f"{HW}/{R}")
+        now = {f: sha256(os.path.join(folder, f)) for f in sorted(os.listdir(folder)) if os.path.isfile(os.path.join(folder, f))}
+        rf = project(f"{HW}/{td['reasons']}") if td.get("reasons") else None
+        reasons = json.load(open(rf)) if rf and os.path.exists(rf) else {}
+        rows = [(f, "changed") for f in now if f in sums and now[f] != sums[f]] + [(f, "new") for f in now if f not in sums] + \
+               [(f, "missing") for f in sums if f not in now]
+        why = lambda f: reasons.get(f) or reasons.get(f.split("_above")[0].split("_below")[0].replace("tile_", "").replace(".glb", ""))
+        bad = [(f, k) for f, k in rows if not why(f)]
+        listing = "; ".join(f"{f} ({k}): {why(f) or 'NO REASON'}" for f, k in rows)
+        json.dump([{"file": f, "change": k, "reason": why(f)} for f, k in rows], open(os.path.join(OUT, "tile_diff.json"), "w"),
+                  indent=1)   # the full list for the gate summary (the detail below is cut at ~3,800 characters)
+        return respond(req, output={"pass": str(not bad).lower(), "detail": (
+            f"{len(rows)} files differ from frozen {td['vs']} ({sum(1 for _, k in rows if k == 'changed')} changed, "
+            f"{sum(1 for _, k in rows if k == 'new')} new, {sum(1 for _, k in rows if k == 'missing')} missing); "
+            f"{len(bad)} without a reason (must be 0): {listing}")[:3800]})
     if tid == "d_lane_void":
         # r14w (lead 21 Nov): driver-height openings within 3 m of a lane edge, new vs the previous round; stops on any
         # new hole without a reason (lane_void_reasons.json)

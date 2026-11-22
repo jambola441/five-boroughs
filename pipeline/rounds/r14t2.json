@@ -1,0 +1,155 @@
+{
+ "round": "r14t2",
+ "prev": "r14t",
+ "kind": "highway_round",
+ "mode": "live",
+ "note": "r14t2 (macmini, 2026-11-21; lead: base-only round first). r14t's chain, no wall clip, no P2_R14U, with underlay_clip reproduced as r14t was made: underlay_clip_v6 (restored, unchanged) in its slot, and underlay_clip (v6b, per triangle) after part_move, as it ran over r14t's folder at 10:28 before the freeze. Cause of the regression: v6b replaced v6's per-vertex lowering, so the chain alone left ribbon ends such as x-3_z15's flat (r14x: 12.39 m vs frozen r14t 7.98 m); v6 alone reproduces r14t's 7.98 / 7.96 / 7.97 m on r14x's tiles.",
+ "p2_terv": "v1c_r6k",
+ "input_build": "work/p2net/b_fdr_r14q",
+ "post_only": true,
+ "frozen_rounds": [
+  "r14i",
+  "r14l",
+  "r14m",
+  "r14n",
+  "r14o",
+  "r14p",
+  "r14q",
+  "r14r",
+  "r14s",
+  "r14t"
+ ],
+ "passes": [
+  "ref_fix",
+  "tjunction_fix",
+  "seam_weld",
+  "tjunction_fix",
+  "paint_attach",
+  "floor_attach",
+  "skirts",
+  "lane_ref",
+  "floor_fix",
+  "floor_split",
+  "ring_fill",
+  "path_keep",
+  "ring_trim_r14t",
+  "light_well",
+  "pit_walls",
+  "cover_walls",
+  "crack_fill",
+  "edge_seal",
+  "underlay_clip_v6",
+  "column_cleanup",
+  "below_to_above"
+ ],
+ "pass_env": {
+  "COVERED": "32959299,910349558,32972050",
+  "LW_TILE": "x4_z0",
+  "P2_R14T": "1",
+  "SKIRT_ALL": "1",
+  "SKIRT_UPTOP": "1",
+  "RING_BAND": "0.25"
+ },
+ "part_move_up": "336534284",
+ "listed_loop": [
+  "wall_check",
+  "node_seam",
+  "node_seam_any",
+  "node_drape",
+  "ring_check",
+  "hole_check",
+  "crack_check",
+  "pit_check",
+  "pitwall_lidar",
+  "floor_vs_lidar",
+  "barrier_check",
+  "column_check",
+  "deck_overlap_check",
+  "seam_tile_check",
+  "paint_check",
+  "wheel_check",
+  "grade_check",
+  "lane_deck_drape"
+ ],
+ "coordinator": "agy:gemini-4-hydrogen-high",
+ "after_part_move": [
+  "underlay_clip"
+ ],
+ "walls_abs": {
+  "metric": "m",
+  "max_m": 2506.6,
+  "unreasoned_gate": false,
+  "note": "base round, lead: walls no worse than frozen r14t (v3c 2506.6 m; v3 3430.9 m). new on-road vs r14t must be 0. The 1,675 m bar returns in r14x2."
+ },
+ "lane_void_check": {
+  "stop": "new_unreasoned > 0",
+  "prev": "r14t",
+  "reasons": "highways/work/p2net/lane_void_reasons.json"
+ },
+ "frames": {
+  "required_before": "lead_gate",
+  "judge": "agy:gemini-4-hydrogen-high",
+  "pairs_vs": "r14t",
+  "sites": [
+   {
+    "name": "lanevoid_x-3_z15_978200211",
+    "tile": "x-3_z15"
+   },
+   {
+    "name": "lanevoid_x1_z5_960097006",
+    "tile": "x1_z5"
+   }
+  ],
+  "cameras": "the r14v debt frames' cameras (census/frames/fdr_r14v_debt), same poses",
+  "capture_guard": {
+   "name": "G0 (page editor)",
+   "rule": "diff A and B frames on scene parts the variant did not change; > 0.05 % of pixels differing there -> re-shoot both before Hydrogen sees them",
+   "mask": "tiles and screen regions with no file changed between r14t and r14w (sha256), plus sky",
+   "version": 2
+  }
+ },
+ "observations": [
+  {
+   "what": "terrain surface above a deck",
+   "where": "x-2_z14 (edge 1256342939 low view)",
+   "class": "candidate (lead), terrain study counts it citywide"
+  },
+  {
+   "what": "street furniture in the lane (lamp posts on lane edges)",
+   "where": "x-3_z15, wall site #10",
+   "class": "candidate (lead)",
+   "owner": "highways (macmini): highways/build.py lamp posts, every 60 m on mainline, every 20 m on the Promenade"
+  }
+ ],
+ "lead_gate_bars": {
+  "walls_on_road_m_max": 1675.0,
+  "walls_report_metric": "wall_near_lane v3 (live 1916.6 m / 655 triangles; r14t 3430.9 m)",
+  "unsupported": "no worse than r14t (new <= 10 m, hanging new 0)",
+  "void": "no worse than r14t (regression unreasoned 0 m2)",
+  "lane_void_check": "0 new vs r14t",
+  "debt": "none pre-agreed (lead 2026-11-21)"
+ },
+ "lead_approval": {
+  "status": "approved",
+  "terms": [
+   "frozen folders are write-once: nothing re-runs a pass inside final_fdr/r14t or any frozen folder"
+  ],
+  "by": "lead",
+  "date": "2026-11-22",
+  "walls": "base round: walls no worse than frozen r14t (v3c 2,506.6 m), unreasoned gate off, new on-road vs r14t 0 (lead approved explicitly)"
+ },
+ "walls_report_also": "work/p2net/wall_near_lane_v3a.py",
+ "workers": 4,
+ "also_gate": {
+  "differing_tiles": "every tile differing from frozen r14t (sha256) is listed with its reason, including x-4_z12, x-6_z30, x0_z12, x1_z4 and the x1_z5 cell",
+  "lane_void": "0 new vs frozen r14t",
+  "unsupported": "no worse",
+  "void": "no worse"
+ },
+ "next": "r14x2 = r14t2 + wall_band_clip, same terms as r14x",
+ "tile_diff": {
+  "vs": "r14t",
+  "reasons": "work/p2net/tile_diff_reasons_r14t2.json",
+  "note": "the lead (2026-11-22): every file differing from frozen r14t's SHA256SUMS is listed with its reason; one without a reason stops the round. Reasons file: {\"<file name>\" or \"x<i>_z<j>\": \"reason\"} (macmini). Full list: <run>/tile_diff.json"
+ }
+}

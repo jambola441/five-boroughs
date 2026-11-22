@@ -20,13 +20,14 @@ import os
 
 
 def site_of(pose, sites):
-    """The one site a G0 row belongs to: its exact name, else the LONGEST site name the pose contains (so
-    'void_x-3_z15_drive' is never counted for 'void_x-3_z15')."""
+    """The one site a G0 row belongs to (the lead, 2026-11-22): its exact site name; otherwise only a site whose
+    name CONTAINS the row name, and only if exactly one does; never a site contained in the row name (so
+    'void_x-3_z15_drive' or 'void_x-3_z15_air' can never stand in for 'void_x-3_z15')."""
     pose = str(pose or "")
     if pose in sites:
         return pose
-    hits = [s for s in sites if s in pose]
-    return max(hits, key=len) if hits else None
+    hits = [s for s in sites if pose and pose in s]
+    return hits[0] if len(hits) == 1 else None
 
 
 def evaluate(folder, need=(), lim=0.05, history_path=None):
