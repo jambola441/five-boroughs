@@ -5,7 +5,9 @@ Install: a folder holding a link named agy to this file, first on PATH for pipel
 untracked). Then every agy call then waits (blocking, no polling) for one of AGY_SLOTS
 slots (default 8) before the real agy starts, so any number of ready steps can start their jobs without overloading the
 machine. Slots are flock'd files in ~/.cache/agyq/; a crashed call releases its slot automatically. The real binary is
-AGY_REAL (default ~/.local/bin/agy). Waiting time is printed to stderr; arguments and stdout pass through unchanged.
+AGY_REAL (default ~/.local/bin/agy). Arguments, stdout and stderr pass through unchanged: the waiting time goes to
+~/.cache/agyq/agyq.log only (lead, 2026-11-23: a wait line on stderr ended up in callers' result files, which merge
+stderr into stdout, and broke their JSON parsing).
 """
 import fcntl
 import os
@@ -30,6 +32,10 @@ while True:
         os.set_inheritable(f.fileno(), True)   # the lock stays held by the exec'd agy until it exits
         waited = time.time() - t0
         if waited > 1:
-            print(f"agyq: waited {waited:.0f}s for slot {i}/{slots}", file=sys.stderr)
+            try:
+                with open(os.path.join(d, "agyq.log"), "a") as lg:
+                    lg.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} pid {os.getpid()} waited {waited:.0f}s for slot {i}/{slots}\n")
+            except OSError:
+                pass   # never let the log break the call
         os.execv(real, [real] + sys.argv[1:])
     time.sleep(2)
