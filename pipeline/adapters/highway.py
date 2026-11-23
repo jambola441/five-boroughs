@@ -120,14 +120,16 @@ def frames_step(cfg, tid):
     if not ok:
         raise RuntimeError(f"G0 capture guard failed: {why}")
     out = P.hydrogen_frames(c, expect=need)   # refuses a folder whose sites aren't the request's poses
-    rows = json.load(open(os.path.join(OUT, out.get("rows_file", "hydrogen_frames.json"))))   # the full rows, never the cut field
+    rows = json.load(open(os.path.join(OUT, "hydrogen_frames.json")))   # the full rows, never the cut field
     rows, applied, errors = FG.apply_overrides(rows, folder, cfg.get("frame_overrides"))
+    by = {}
+    for r in rows:
+        by[r["verdict"] or "none"] = by.get(r["verdict"] or "none", 0) + 1
+    # exactly the fields build_round declares for a highway hydrogen_frames (Irrigator's output contract; r14x3-1 failed
+    # on undeclared extras): the four below are always present, empty lists when the round has no overrides
+    out = {**out, "rows": P.rows_field(rows), "hydrogen_verdicts": out["verdicts"], "verdicts": json.dumps(by),
+           "lead_overrides": json.dumps(applied), "override_errors": json.dumps(errors)}
     if cfg.get("frame_overrides") is not None:
-        out = {**out, "rows": P.rows_field(rows), "lead_overrides": json.dumps(applied), "override_errors": json.dumps(errors)}
-        by = {}
-        for r in rows:
-            by[r["verdict"] or "none"] = by.get(r["verdict"] or "none", 0) + 1
-        out["hydrogen_verdicts"], out["verdicts"] = out["verdicts"], json.dumps(by)
         json.dump({"rows": rows, "lead_overrides": applied, "override_errors": errors},
                   open(os.path.join(OUT, "hydrogen_frames_overridden.json"), "w"), indent=1)
     worse = [r for r in rows if r.get("verdict") == "worse"]
@@ -299,8 +301,11 @@ def main():
         run(cfg, ["$PY", "-I", "work/p2net/wall_near_lane.py", RC, "work/p2net/empty_ref"], "d_walls_abs.log")
         base = f"work/p2net/wall_near_lane_{r}_nocbe_abs"
         keep = os.path.join(project(HW), base + "_v3c.json")
-        if cfg.get("walls_report_also") and not os.path.exists(keep):   # set v3c aside BEFORE v3a can run (r14x-1's bug)
-            shutil.copy2(os.path.join(project(HW), base + ".json"), keep)
+        cur = os.path.join(project(HW), base + ".json")
+        if cfg.get("walls_report_also") and (not os.path.exists(keep) or os.path.getmtime(cur) > os.path.getmtime(keep)):
+            # set v3c aside BEFORE v3a can run (r14x-1's bug), and refresh it when the abs check ran again (r14x3-1: a copy
+            # from the first attempt hid re-keyed reasons from every retry). After v3a, the restored copy keeps keep's mtime.
+            shutil.copy2(cur, keep)
         a = json.load(open(keep)) if os.path.exists(keep) else jload(base + ".json")   # v3c, whatever v3a is doing
         v3 = ""
         if cfg.get("walls_report_also"):   # the lead (r14w): report walls on v3 too; v3a writes the same file name

@@ -186,7 +186,9 @@ def heavy_slot(cores, runs, ncpu=None, load=None):
 
 def run_job(name, cmd, cwd, log, env=None, wait=None, cores=None):
     """Run cmd as a detached job named name; return its exit code once it has finished, else raise Running.
-    stdout+stderr go to OUT/log. A job that died without writing its exit code raises RuntimeError."""
+    stdout goes to OUT/log (often a result file that gets parsed), stderr to OUT/log + ".stderr", so nothing a tool prints
+    on stderr can corrupt a result (lead, 2026-11-23: agyq's wait line broke r14x3-1's Hydrogen JSON). A job that died
+    without writing its exit code raises RuntimeError."""
     import time
     d = os.path.join(OUT, "jobs", name)
     rec, rcf = os.path.join(d, "job.json"), os.path.join(d, "rc")
@@ -201,9 +203,9 @@ def run_job(name, cmd, cwd, log, env=None, wait=None, cores=None):
             lock.close()
             raise Running(f"job running: waiting for a heavy-job slot for {name}: {why}")
         os.makedirs(d, exist_ok=True)
-        with open(os.path.join(OUT, log), "w") as f:
+        with open(os.path.join(OUT, log), "w") as f, open(os.path.join(OUT, log) + ".stderr", "w") as fe:
             p = subprocess.Popen(["/bin/sh", "-c", '"$@"; echo $? > "$JOB_RC.tmp" && mv "$JOB_RC.tmp" "$JOB_RC"',
-                                  "job"] + list(cmd), cwd=cwd, stdout=f, stderr=subprocess.STDOUT,
+                                  "job"] + list(cmd), cwd=cwd, stdout=f, stderr=fe,
                                  stdin=subprocess.DEVNULL, start_new_session=True,
                                  env={**os.environ, **(env or {}), "JOB_RC": rcf})
         json.dump({"pid": p.pid, "cmd": [str(c) for c in cmd], "cwd": cwd, "log": log, "started": time.time(),
@@ -226,11 +228,20 @@ def run_job(name, cmd, cwd, log, env=None, wait=None, cores=None):
             time.sleep(1)
             if os.path.exists(rcf):
                 continue
-            raise RuntimeError(f"job {name} (pid {j['pid']}) ended without an exit code; see {log}")
+            raise RuntimeError(f"job {name} (pid {j['pid']}) ended without an exit code; see {log} and {log}.stderr")
         if time.time() >= t_end:
             mins = (time.time() - j["started"]) / 60
             raise Running(f"job running: {name}, {mins:.0f} min so far (log {log})")
         time.sleep(3)
+
+
+def job_tail(log, n=400):
+    """The last n characters of a job's output, stdout then stderr: for error messages only, never for parsing."""
+    out = ""
+    for p in (os.path.join(OUT, log), os.path.join(OUT, log) + ".stderr"):
+        if os.path.exists(p):
+            out += open(p, errors="replace").read()[-n:]
+    return out[-n:]
 
 
 def run_main(main):

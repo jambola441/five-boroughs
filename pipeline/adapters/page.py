@@ -782,7 +782,7 @@ def hydrogen_frames(cfg, expect=None):
     by = {}
     for r in rows:
         by[r["verdict"] or "none"] = by.get(r["verdict"] or "none", 0) + 1
-    return {"frames": len(rows), "verdicts": json.dumps(by), "rows": rows_field(rows), "rows_file": "hydrogen_frames.json"}
+    return {"frames": len(rows), "verdicts": json.dumps(by), "rows": rows_field(rows)}   # full rows: OUT/hydrogen_frames.json
 
 
 def rows_field(rows):

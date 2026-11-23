@@ -184,7 +184,8 @@ def highway_tasks(cfg):
          node(s, "highway", ["pass", "detail"], after=["h_cbe_copy"], validated=True) for s in stops] + [
          node("d_listed", "highway", ["pass", "detail"], after=["h_cbe_copy"]),
          ] + ([node("frames_ready", "highway", ["images", "request"], after=stops + ["d_listed"]),
-               node("hydrogen_frames", "highway", ["frames", "verdicts", "rows", "capture_guard"], after=["frames_ready"],
+               node("hydrogen_frames", "highway", ["frames", "verdicts", "rows", "capture_guard", "served", "hydrogen_verdicts",
+                                                    "lead_overrides", "override_errors"], after=["frames_ready"],
                     validated=True)] if cfg.get("frames") else []) + [
          node("highway_accept", "round_live", ["rules_pass", "decision", "reasons"],
               after=stops + ["d_listed"] + (["hydrogen_frames"] if cfg.get("frames") else []), validated=True),
