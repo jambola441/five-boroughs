@@ -82,3 +82,37 @@ echo "Prepared retry"
 
 if __name__ == "__main__":
     main()
+
+
+def test_long_keys():
+    """2026-11-27: ~200 stopped steps made the queue file name pass 255 bytes (Errno 63). The key is now short, the full
+    list is in evidence["steps"], and a 'reasons' answer still retries every step."""
+    import importlib, tempfile
+    tmp = tempfile.mkdtemp(prefix="sup_long_")
+    runs, bin_ = os.path.join(tmp, "runs"), os.path.join(tmp, "bin")
+    os.makedirs(runs); os.makedirs(bin_)
+    calls = os.path.join(tmp, "calls.txt")
+    open(os.path.join(bin_, "irrigator"), "w").write(f"#!/bin/sh\necho \"$@\" >> '{calls}'\necho ok\n")
+    os.chmod(os.path.join(bin_, "irrigator"), 0o755)
+    os.environ.update(PIPELINE_RUNS=runs, PATH=bin_ + os.pathsep + os.environ["PATH"])
+    for m in ("decisions", "supervise"):
+        sys.modules.pop(m, None)
+    Dq = importlib.import_module("decisions"); sup = importlib.import_module("supervise")
+    rd = os.path.join(runs, "stations-full-b-2"); os.makedirs(os.path.join(rd, "run"))
+    json.dump({"round": "s", "kind": "research_swarm"}, open(os.path.join(rd, "round.json"), "w"))
+    steps = [f"{i}__photos" for i in range(100, 300)]
+    json.dump({"tasks": {s: {"status": "uncertain", "error": "provider outcome uncertain (malformed_response)"} for s in steps}},
+              open(os.path.join(rd, "run", "state.json"), "w"))
+    sup.sync_queue(rd)
+    it = next(i for i in Dq.items() if i["kind"] == "verdict")
+    assert len(it["id"]) < 120 and it["step"].startswith("100__photos+199more-"), it["id"]
+    assert it["evidence"]["steps"] == steps
+    Dq.answer(it["id"], "reasons", "stations-coordinator")
+    sup.sync_queue(rd)
+    retried = [l.split()[-1] for l in open(calls).read().splitlines() if l.startswith("retry")]
+    assert retried == steps, (len(retried), retried[:3])
+    print("4. 200 stopped steps: short queue key, full list in evidence, 'reasons' retries all 200: ok")
+
+
+if __name__ == "__main__":
+    test_long_keys()

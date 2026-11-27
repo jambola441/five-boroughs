@@ -143,6 +143,23 @@ STREAM_OWNER = {"page_round": "page-coordinator", "terrain_round_live": "lead", 
                 "research_swarm": "stations-coordinator"}
 
 
+def step_key(steps):
+    """A queue item's step key. Short lists stay readable ("a+b"); long ones (stations-full-b-2 had ~200 stopped steps,
+    and the joined name passed macOS's 255-byte file-name limit: Errno 63, 2026-11-27) become "<first>+<n>more-<hash>".
+    The full list always goes in the item's evidence as "steps"."""
+    joined = "+".join(steps)
+    if len(joined) <= 120:
+        return joined
+    import hashlib
+    return f"{steps[0]}+{len(steps) - 1}more-{hashlib.sha256(joined.encode()).hexdigest()[:12]}"
+
+
+def item_steps(it):
+    """The steps an item covers: the evidence's full list when present (long keys are shortened), else the key."""
+    ev = it.get("evidence") or {}
+    return list(ev["steps"]) if isinstance(ev.get("steps"), list) else it["step"].split("+")
+
+
 def sync_queue(run_dir):
     """POLICY.md's pull queue: raise what this run waits on, apply answers, close what cleared."""
     import decisions as Dq
@@ -178,18 +195,19 @@ def sync_queue(run_dir):
                 "a lead decision" in (T[k].get("error") or "") for k in hard)):   # the lead: 'worse', G0 v2 repeats and
             # an unlisted tile difference are its call (d_tile_diff never re-runs on its own: the lead answers 'reasons')
             owner = "lead"
-        key = "+".join(hard)
+        key = step_key(hard)
         for it in Dq.items():   # one open verdict per run: a newer set of stopped steps replaces the older item
             if it["run"] == name and it["kind"] == "verdict" and it["status"] == "open" and it["step"] != key:
                 Dq.close(it, f"superseded: the run now stops at {', '.join(hard)}")
         # the lead: a failed condition of a conditional debt (a hydrogen_pose gate) fails the round, no debt offered
         nodebt = [g["id"] for g in cfg.get("gates", []) if g["id"] in hard and g.get("check") == "hydrogen_pose"]
         ch = [c for c in Dq.CHOICES["verdict"] if not (nodebt and c == "debt")]
-        Dq.raise_item(name, "+".join(hard), "verdict", owner,
-                      f"{cfg.get('round', name)} stopped at {', '.join(hard)}: {', '.join(ch)}?"
+        shown = ", ".join(hard[:12]) + (f" and {len(hard) - 12} more" if len(hard) > 12 else "")
+        Dq.raise_item(name, key, "verdict", owner,
+                      f"{cfg.get('round', name)} stopped at {shown}: {', '.join(ch)}?"
                       + (f" (no debt: {', '.join(nodebt)} is the lead's condition)" if nodebt else ""),
-                      {k: {**res(k), "error": (T[k].get("error") or "")[:300]} for k in hard}, run_dir, priority=1,
-                      choices=ch)
+                      {"steps": hard, **{k: {**res(k), "error": (T[k].get("error") or "")[:300]} for k in hard}},
+                      run_dir, priority=1, choices=ch)
     rows = os.path.join(run_dir, "register_rows_proposed.jsonl")
     if T.get("register_update", {}).get("status") == "verified" and os.path.exists(rows):
         last = json.loads(open(rows).read().strip().splitlines()[-1])
@@ -200,7 +218,7 @@ def sync_queue(run_dir):
     for it in Dq.items():
         if it["run"] != name or it["status"] not in ("open", "answered"):
             continue
-        k, steps = it["kind"], it["step"].split("+")
+        k, steps = it["kind"], item_steps(it)
         if it["status"] == "open":   # cleared on its own?
             if k == "approval" and T.get("lead_gate", {}).get("status") == "verified":
                 Dq.close(it, "the lead gate passed")
@@ -223,11 +241,11 @@ def sync_queue(run_dir):
                       open(os.path.join(run_dir, "approval.json"), "w"))
         elif (k == "approval" and a["choice"] == "reject") or (k == "verdict" and a["choice"] == "fix"):
             open(os.path.join(run_dir, "RETIRED"), "w").write(f"{a['choice']} via the decision queue ({note})\n")
-        elif k == "verdict" and a["choice"] == "reasons" and (cfg.get("kind") == "research_swarm" or "d_tile_diff" in it["step"]
-                                                               or "cl_gate" in it["step"]):
+        elif k == "verdict" and a["choice"] == "reasons" and (cfg.get("kind") == "research_swarm" or "d_tile_diff" in steps
+                                                               or "cl_gate" in steps):
             # a swarm check (or d_tile_diff / cl_gate, whose reasons come after the stop) is re-run on 'reasons'
             ok = True
-            for step in it["step"].split("+"):
+            for step in item_steps(it):
                 r = subprocess.run(["irrigator", "retry", "--allow-uncertain", os.path.join(run_dir, "run"), step],
                                    capture_output=True, text=True, env={**os.environ, "PIPELINE_OUT": run_dir})
                 ok = ok and r.returncode == 0
