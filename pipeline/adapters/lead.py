@@ -24,7 +24,7 @@ def main():
             return respond(req, "not_started", error="awaiting lead approval (write approval.json, then retry)")
         decision = json.load(open(path))
         d = deps(req)
-        qa = d.get("qa_accept") or d.get("explore_accept") or d.get("page_accept") or {}
+        qa = d.get("qa_accept") or d.get("explore_accept") or d.get("page_accept") or d.get("highway_accept") or d.get("terrain_accept") or {}
         rows = qa.get("class_rows") or json.dumps([{"class": "accept reason", "count": "", "status": r}
                                                    for r in json.loads(qa.get("reasons") or "[]")])   # terrain rounds give reasons
         return respond(req, output={"approved_by": decision.get("by", ""), "decision": qa.get("decision", ""),
