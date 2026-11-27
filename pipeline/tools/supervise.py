@@ -25,6 +25,7 @@ os.makedirs(LOG, exist_ok=True)
 REASONS = {"d_tile_inventory": "tile_inventory_reasons.json", "d_walls": "wall_near_lane_reasons.json",
            "d_void": "void_diff_reasons.json", "d_lane_void": "lane_void_reasons.json"}   # macmini's reasons files, in highways/work/p2net
 HW = os.path.join(ROOT, "highways/work/p2net")
+HEAVY_RETRY_PER_PASS = int(os.environ.get("SUPERVISE_HEAVY_RETRY", "6"))   # waiting-for-a-slot steps re-tried per run per pass
 
 
 def event(run, what, **kw):
@@ -57,9 +58,15 @@ def plan(run_dir):
     st = json.load(open(os.path.join(run_dir, "run", "state.json")))
     cfg = json.load(open(os.path.join(run_dir, "round.json")))
     out = []   # (step, flags, why, reset_jobs)
+    parked = 0   # steps waiting for a heavy-job slot: only a few per pass (2026-11-27: re-trying all ~430 every minute,
+    #              each rewriting a 10 MB state file, burned ~6 cores and pushed the load to ~30)
     for tid, t in st["tasks"].items():
         s, err = t.get("status"), t.get("error") or ""
-        if s == "failed" and ("job running" in err or "GB free" in err):
+        if s == "failed" and "heavy-job slot" in err:
+            parked += 1
+            if parked <= HEAVY_RETRY_PER_PASS:
+                out.append((tid, [], "heavy-job slot (a few per pass)", False))
+        elif s == "failed" and ("job running" in err or "GB free" in err):
             out.append((tid, [], "job running", False))
         elif s == "uncertain" and "deadline" in err:
             out.append((tid, ["--allow-uncertain"], "ran out of time; its job is idempotent", False))

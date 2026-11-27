@@ -169,14 +169,18 @@ def job_cores(name, cores=None):
     return cores if cores is not None else next((c for pre, c in HEAVY.items() if name.startswith(pre)), 0)
 
 
-def heavy_slot(cores, runs, ncpu=None, load=None):
-    """None if a job using this many cores may start now, else why it must wait."""
+def heavy_slot(cores, runs, ncpu=None, load=None, check_load=True):
+    """None if a job using this many cores may start now, else why it must wait. check_load=False skips the load-average
+    test (2026-11-27: agy jobs use ~1 % CPU each and agyq already caps them; the load test only let orchestration churn,
+    which it caused itself, block them). The HEAVY_CORES budget still applies."""
     if not cores:
         return None
     busy = heavy_running(runs)
     used = sum(c for _, c in busy)
     if used + cores > HEAVY_CORES:
         return f"{used} of {HEAVY_CORES} heavy cores in use ({', '.join(n for n, _ in busy)})"
+    if not check_load:
+        return None
     ncpu = ncpu or os.cpu_count() or 8
     load = os.getloadavg()[0] if load is None else load
     if load + cores > ncpu + LOAD_SLACK:
@@ -184,7 +188,7 @@ def heavy_slot(cores, runs, ncpu=None, load=None):
     return None
 
 
-def run_job(name, cmd, cwd, log, env=None, wait=None, cores=None):
+def run_job(name, cmd, cwd, log, env=None, wait=None, cores=None, check_load=True):
     """Run cmd as a detached job named name; return its exit code once it has finished, else raise Running.
     stdout goes to OUT/log (often a result file that gets parsed), stderr to OUT/log + ".stderr", so nothing a tool prints
     on stderr can corrupt a result (lead, 2026-11-23: agyq's wait line broke r14x3-1's Hydrogen JSON). A job that died
@@ -198,7 +202,7 @@ def run_job(name, cmd, cwd, log, env=None, wait=None, cores=None):
         lock = open(os.path.join(runs, ".heavy.lock"), "w")
         fcntl.flock(lock, fcntl.LOCK_EX)   # check-and-start is atomic across runs
         cores = job_cores(name, cores)
-        why = heavy_slot(cores, runs)
+        why = heavy_slot(cores, runs, check_load=check_load)
         if why:
             lock.close()
             raise Running(f"job running: waiting for a heavy-job slot for {name}: {why}")
